@@ -1,0 +1,1753 @@
+<title>Agent Hub Architecture</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#F2F5F5;
+  --surface:#FFFFFF;
+  --surface-2:#E9EEEE;
+  --ink:#10181A;
+  --ink-2:#3A4A4C;
+  --muted:#64767A;
+  --line:#D3DCDC;
+  --line-strong:#B6C3C3;
+  --accent:#0E6B6B;
+  --accent-soft:#D9EAE8;
+  --tierA:#0E6B6B;
+  --tierA-bg:#DCEBE9;
+  --tierB:#8A5E0A;
+  --tierB-bg:#F2E7CF;
+  --ext:#3B4A78;
+  --ext-bg:#E0E4F0;
+  --crit:#9B3024;
+  --shadow:0 1px 2px rgba(16,24,26,.05), 0 8px 24px -16px rgba(16,24,26,.18);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0C1213;
+    --surface:#131C1D;
+    --surface-2:#1B2627;
+    --ink:#E8EFEF;
+    --ink-2:#BCCBCB;
+    --muted:#8A9D9E;
+    --line:#2A3738;
+    --line-strong:#3C4C4D;
+    --accent:#52B5AA;
+    --accent-soft:#17312F;
+    --tierA:#52B5AA;
+    --tierA-bg:#13302E;
+    --tierB:#D5A646;
+    --tierB-bg:#332813;
+    --ext:#9AAAD8;
+    --ext-bg:#1C2238;
+    --crit:#E08B7E;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -18px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0C1213;
+  --surface:#131C1D;
+  --surface-2:#1B2627;
+  --ink:#E8EFEF;
+  --ink-2:#BCCBCB;
+  --muted:#8A9D9E;
+  --line:#2A3738;
+  --line-strong:#3C4C4D;
+  --accent:#52B5AA;
+  --accent-soft:#17312F;
+  --tierA:#52B5AA;
+  --tierA-bg:#13302E;
+  --tierB:#D5A646;
+  --tierB-bg:#332813;
+  --ext:#9AAAD8;
+  --ext-bg:#1C2238;
+  --crit:#E08B7E;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -18px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:16.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.shell{
+  max-width:1240px;
+  margin:0 auto;
+  padding-inline:20px;
+  padding-block:0 72px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0 48px;
+}
+@media (min-width:1080px){
+  .shell{grid-template-columns:210px minmax(0,1fr);}
+}
+
+/* ---------- masthead ---------- */
+.masthead{
+  grid-column:1/-1;
+  padding-block:56px 36px;
+  border-bottom:2px solid var(--ink);
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:0 0 18px;
+}
+h1{
+  font-family:var(--sans);
+  font-weight:700;
+  font-size:clamp(2.1rem,5.4vw,3.5rem);
+  line-height:1.03;
+  letter-spacing:-.022em;
+  margin:0 0 18px;
+  text-wrap:balance;
+}
+.standfirst{
+  font-size:1.14rem;
+  color:var(--ink-2);
+  max-width:60ch;
+  margin:0 0 28px;
+}
+.meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 28px;
+  font-family:var(--mono);
+  font-size:11.5px;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  color:var(--muted);
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ---------- nav ---------- */
+nav.toc{display:none}
+@media (min-width:1080px){
+  nav.toc{
+    display:block;
+    position:sticky;
+    top:0;
+    align-self:start;
+    padding-block:44px 0;
+    max-height:100vh;
+    overflow-y:auto;
+  }
+  nav.toc ol{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    counter-reset:toc;
+  }
+  nav.toc a{
+    display:grid;
+    grid-template-columns:24px 1fr;
+    gap:6px;
+    font-family:var(--sans);
+    font-size:12.5px;
+    line-height:1.35;
+    text-decoration:none;
+    color:var(--muted);
+    padding:6px 8px 6px 0;
+    border-left:2px solid transparent;
+    padding-left:10px;
+  }
+  nav.toc a::before{
+    counter-increment:toc;
+    content:counter(toc,decimal-leading-zero);
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--line-strong);
+    padding-top:2px;
+  }
+  nav.toc a:hover{color:var(--ink)}
+  nav.toc a.on{color:var(--accent);border-left-color:var(--accent);font-weight:600}
+  nav.toc a.on::before{color:var(--accent)}
+}
+
+/* ---------- sections ---------- */
+main{min-width:0;padding-block:44px 0}
+section{padding-block:0 60px;scroll-margin-top:24px}
+.sec-head{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:0 0 6px;
+  padding-top:28px;
+  border-top:1px solid var(--line);
+}
+section:first-of-type .sec-head{border-top:0;padding-top:0}
+.sec-num{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--accent);
+  letter-spacing:.08em;
+}
+h2{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:clamp(1.35rem,3vw,1.78rem);
+  letter-spacing:-.016em;
+  line-height:1.15;
+  margin:0;
+  text-wrap:balance;
+}
+h3{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:1.03rem;
+  letter-spacing:-.005em;
+  margin:34px 0 10px;
+}
+h4{
+  font-family:var(--mono);
+  font-weight:500;
+  font-size:11px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:26px 0 10px;
+}
+p,ul,ol{max-width:68ch}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 14px;padding-left:1.15em}
+li{margin-bottom:7px}
+li::marker{color:var(--line-strong)}
+strong{font-weight:600;color:var(--ink)}
+em{font-style:italic}
+code{
+  font-family:var(--mono);
+  font-size:.85em;
+  background:var(--surface-2);
+  padding:1px 5px;
+  border-radius:3px;
+  color:var(--ink-2);
+}
+a{color:var(--accent)}
+.lede{font-size:1.05rem;color:var(--ink-2);margin-bottom:22px}
+
+/* ---------- badges ---------- */
+.tier{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  padding:2.5px 7px;
+  border-radius:3px;
+  white-space:nowrap;
+  font-weight:500;
+}
+.tier.a{background:var(--tierA-bg);color:var(--tierA)}
+.tier.b{background:var(--tierB-bg);color:var(--tierB)}
+.tier.x{background:var(--ext-bg);color:var(--ext)}
+.tier::before{
+  content:"";
+  width:5px;height:5px;border-radius:50%;
+  background:currentColor;
+}
+
+/* ---------- tables ---------- */
+.scroll{
+  overflow-x:auto;
+  margin:0 0 20px;
+  border:1px solid var(--line);
+  border-radius:4px;
+  background:var(--surface);
+}
+table{
+  border-collapse:collapse;
+  width:100%;
+  min-width:620px;
+  font-family:var(--sans);
+  font-size:13.4px;
+  line-height:1.48;
+}
+th,td{
+  text-align:left;
+  padding:11px 14px;
+  border-bottom:1px solid var(--line);
+  vertical-align:top;
+}
+thead th{
+  font-family:var(--mono);
+  font-weight:500;
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  background:var(--surface-2);
+  border-bottom:1px solid var(--line-strong);
+  white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:0}
+td.k{font-weight:600;color:var(--ink);white-space:nowrap}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.no{color:var(--crit);font-weight:600}
+.yes{color:var(--accent);font-weight:600}
+
+/* ---------- architecture diagram ---------- */
+.arch{
+  margin:26px 0 24px;
+  display:grid;
+  gap:14px;
+  grid-template-columns:1fr;
+}
+@media (min-width:860px){
+  .arch{grid-template-columns:minmax(0,1fr) 184px}
+}
+.arch-stack{min-width:0}
+.layer{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+@media (min-width:620px){
+  .layer{grid-template-columns:104px minmax(0,1fr);gap:14px;align-items:center}
+}
+.layer-label{
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  line-height:1.3;
+}
+.nodes{
+  display:grid;
+  gap:8px;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+}
+.node{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:9px 11px;
+  box-shadow:var(--shadow);
+  min-width:0;
+}
+.node .n{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:12.6px;
+  line-height:1.28;
+  letter-spacing:-.005em;
+  display:block;
+}
+.node .d{
+  font-family:var(--mono);
+  font-size:9.5px;
+  line-height:1.4;
+  color:var(--muted);
+  display:block;
+  margin-top:3px;
+  letter-spacing:.01em;
+}
+.node.core{border-color:var(--accent);border-width:1.5px}
+.node.core .n{color:var(--accent)}
+.node.src-a{border-left:3px solid var(--tierA)}
+.node.src-b{border-left:3px solid var(--tierB)}
+.node.src-x{border-left:3px solid var(--ext)}
+.seam{
+  height:20px;
+  position:relative;
+}
+.seam::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:50%;
+  border-top:1px dashed var(--line-strong);
+}
+.seam::after{
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:0;height:0;
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
+  border-top:6px solid var(--line-strong);
+}
+.arch-rail{
+  background:var(--surface-2);
+  border:1px dashed var(--line-strong);
+  border-radius:4px;
+  padding:12px 13px;
+}
+.arch-rail h5{
+  font-family:var(--mono);
+  font-size:9.5px;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:0 0 10px;
+  font-weight:500;
+}
+.arch-rail ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.arch-rail li{
+  margin:0;
+  font-family:var(--sans);
+  font-size:11.6px;
+  line-height:1.35;
+  color:var(--ink-2);
+}
+.arch-rail li b{display:block;font-weight:600;color:var(--ink);font-size:12.2px}
+.caption{
+  font-family:var(--mono);
+  font-size:10.5px;
+  color:var(--muted);
+  line-height:1.5;
+  max-width:70ch;
+  margin:0 0 10px;
+}
+
+/* ---------- pipeline ---------- */
+.pipe{
+  display:grid;
+  gap:8px;
+  grid-template-columns:repeat(auto-fit,minmax(152px,1fr));
+  margin:20px 0 18px;
+  counter-reset:step;
+}
+.step{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-top:2px solid var(--accent);
+  border-radius:0 0 4px 4px;
+  padding:11px 12px 12px;
+}
+.step .s{
+  counter-increment:step;
+  font-family:var(--mono);
+  font-size:9.5px;
+  letter-spacing:.1em;
+  color:var(--accent);
+  display:block;
+  margin-bottom:5px;
+}
+.step .s::before{content:"STEP " counter(step) " / "}
+.step .t{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:12.8px;
+  display:block;
+  line-height:1.25;
+  margin-bottom:4px;
+}
+.step .b{font-size:12.6px;line-height:1.45;color:var(--ink-2);display:block}
+
+/* ---------- code ---------- */
+pre{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:16px 18px;
+  overflow-x:auto;
+  margin:0 0 10px;
+  font-family:var(--mono);
+  font-size:11.8px;
+  line-height:1.62;
+  color:var(--ink-2);
+}
+pre code{background:none;padding:0;font-size:inherit;color:inherit}
+pre .c{color:var(--muted);font-style:italic}
+pre .key{color:var(--accent)}
+pre .str{color:var(--ink)}
+
+/* ---------- callout ---------- */
+.callout{
+  background:var(--accent-soft);
+  border-left:3px solid var(--accent);
+  border-radius:0 4px 4px 0;
+  padding:14px 18px;
+  margin:20px 0;
+  max-width:72ch;
+}
+.callout p{margin:0;font-size:15.4px;color:var(--ink)}
+.callout p+p{margin-top:10px}
+.callout .tag{
+  font-family:var(--mono);
+  font-size:9.5px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--accent);
+  display:block;
+  margin-bottom:6px;
+  font-weight:500;
+}
+
+/* ---------- source cards ---------- */
+.sources{
+  display:grid;
+  gap:12px;
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  margin:24px 0;
+}
+.sc{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:15px 16px 16px;
+  box-shadow:var(--shadow);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.sc h3{margin:0;font-size:14.4px;line-height:1.25}
+.sc .verdict{font-size:13.6px;line-height:1.5;color:var(--ink-2);margin:0;max-width:none}
+.sc dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11.8px;font-family:var(--sans)}
+.sc dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.sc dd{margin:0;color:var(--ink-2);line-height:1.4}
+
+/* ---------- phases ---------- */
+.phases{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  margin:22px 0;
+}
+.phase{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:4px 20px;
+  padding:16px 0;
+  border-top:1px solid var(--line);
+}
+@media (min-width:700px){
+  .phase{grid-template-columns:132px minmax(0,1fr) 210px}
+}
+.phase:last-child{border-bottom:1px solid var(--line)}
+.ph-id{
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:var(--accent);
+  line-height:1.5;
+}
+.ph-id span{display:block;color:var(--muted);letter-spacing:.04em}
+.ph-body h3{margin:0 0 6px;font-size:14.6px}
+.ph-body p{margin:0;font-size:13.8px;color:var(--ink-2);max-width:none}
+.ph-exit{
+  font-size:12.4px;
+  color:var(--ink-2);
+  background:var(--surface-2);
+  border-radius:4px;
+  padding:9px 11px;
+  align-self:start;
+  line-height:1.45;
+}
+.ph-exit b{
+  font-family:var(--mono);
+  font-size:9.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  display:block;
+  margin-bottom:4px;
+  font-weight:500;
+}
+
+footer{
+  grid-column:1/-1;
+  border-top:2px solid var(--ink);
+  padding-top:18px;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+/* ---------- figures ---------- */
+figure.fig{margin:26px 0;padding:0}
+.fig-frame{
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:4px;
+  background:var(--surface);
+  padding:16px 18px;
+}
+.fig svg{display:block;width:100%;min-width:780px;height:auto}
+.fig figcaption{
+  font-family:var(--mono);
+  font-size:10.5px;
+  line-height:1.6;
+  color:var(--muted);
+  margin-top:11px;
+  max-width:74ch;
+}
+.fig figcaption b{color:var(--ink-2);font-weight:500}
+/* diagram primitives */
+.d-box{fill:var(--surface);stroke:var(--line-strong);stroke-width:1.2}
+.d-core{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.8}
+.d-own{fill:none;stroke:var(--accent);stroke-width:1.6}
+.d-a{fill:var(--tierA-bg);stroke:var(--tierA);stroke-width:1.3}
+.d-b{fill:var(--tierB-bg);stroke:var(--tierB);stroke-width:1.3}
+.d-soft{fill:var(--surface-2);stroke:var(--line);stroke-width:1}
+.d-ext{fill:none;stroke:var(--line-strong);stroke-width:1.2;stroke-dasharray:5 4}
+.d-dia{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.d-t{fill:var(--ink);font-family:var(--sans);font-size:12px;font-weight:600}
+.d-t2{fill:var(--ink);font-family:var(--sans);font-size:11px;font-weight:600}
+.d-n{fill:var(--ink);font-family:var(--mono);font-size:9.5px}
+.d-m{fill:var(--muted);font-family:var(--mono);font-size:9px}
+.d-l{fill:var(--ink-2);font-family:var(--mono);font-size:9.5px}
+.d-hdr{fill:var(--muted);font-family:var(--mono);font-size:9.5px;letter-spacing:.09em}
+.d-hdr-a{fill:var(--tierA);font-family:var(--mono);font-size:10px;letter-spacing:.09em;font-weight:500}
+.d-hdr-b{fill:var(--tierB);font-family:var(--mono);font-size:10px;letter-spacing:.09em;font-weight:500}
+.d-hdr-acc{fill:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:.09em;font-weight:500}
+.d-ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+.d-ln-a{stroke:var(--tierA);stroke-width:1.6;fill:none}
+.d-ln-b{stroke:var(--tierB);stroke-width:1.6;fill:none;stroke-dasharray:5 4}
+.d-ln-acc{stroke:var(--accent);stroke-width:1.5;fill:none}
+.d-ln-d{stroke:var(--line-strong);stroke-width:1.1;fill:none;stroke-dasharray:4 3}
+.d-life{stroke:var(--line);stroke-width:1;fill:none;stroke-dasharray:3 4}
+.d-head{fill:var(--line-strong)}
+.d-head-a{fill:var(--tierA)}
+.d-head-b{fill:var(--tierB)}
+.d-head-acc{fill:var(--accent)}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Platform architecture · for review</p>
+    <h1>Agent Hub Architecture</h1>
+    <p class="standfirst">One catalog, one gateway and one concierge agent over three very different agent sources — Microsoft&nbsp;365 Copilot agent builder, Copilot Studio, and the organisation's own hosted LLM agents — plus a self-service path for other teams to publish theirs.</p>
+    <div class="meta">
+      <span><b>Status</b> &nbsp;Draft v2</span>
+      <span><b>Date</b> &nbsp;5 Nov 2026</span>
+      <span><b>Stack</b> &nbsp;React · .NET 10 · PostgreSQL</span>
+      <span><b>Scope</b> &nbsp;End-to-end: registry, runtime, routing, governance</span>
+      <span><b>Horizon</b> &nbsp;~24 weeks to self-service</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#constraint">The constraint that shapes everything</a></li>
+      <li><a href="#sources">What each source can actually do</a></li>
+      <li><a href="#architecture">Target architecture</a></li>
+      <li><a href="#card">The Agent Card</a></li>
+      <li><a href="#concierge">The concierge agent</a></li>
+      <li><a href="#gateway">Gateway &amp; invocation contract</a></li>
+      <li><a href="#onboarding">Onboarding other teams</a></li>
+      <li><a href="#governance">Identity, security, governance</a></li>
+      <li><a href="#observability">Observability &amp; cost</a></li>
+      <li><a href="#stack">Technology stack</a></li>
+      <li><a href="#data">Data model &amp; entitlements</a></li>
+      <li><a href="#roadmap">Delivery roadmap</a></li>
+      <li><a href="#decisions">Decisions to make now</a></li>
+      <li><a href="#risks">Risks</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- 01 -->
+    <section id="constraint">
+      <div class="sec-head"><span class="sec-num">01</span><h2>The constraint that shapes everything</h2></div>
+      <p class="lede">Your three sources are not three flavours of the same thing. Two of them can be called over an API; one of them cannot. Every other decision in this document follows from that.</p>
+
+      <p>Agents built in <strong>Microsoft 365 Copilot agent builder</strong> are <em>declarative</em> agents: instructions, knowledge sources and actions layered on top of the Microsoft 365 Copilot orchestrator. They are surfaced inside Copilot chat and Teams. There is no public endpoint your dashboard can post a user's message to and stream a reply from.</p>
+
+      <p><strong>Copilot Studio</strong> agents and your <strong>org-hosted agents</strong> both have real endpoints — Direct Line / the Microsoft&nbsp;365 Agents SDK client for the former, your own HTTP or MCP surface for the latter. Your dashboard can own the whole conversation for these.</p>
+
+      <p>So the hub carries <strong>two interaction tiers</strong>, and the distinction is visible everywhere — in the Agent Card schema, in the diagram, in the UI, and in what the concierge agent hands back:</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Tier</th><th>Means</th><th>User experience in the hub</th><th>Applies to</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tier a">Tier A · invocable</span></td>
+              <td>Gateway holds the conversation: auth, streaming, logging, cost metering, evaluation all happen in your platform.</td>
+              <td>Full chat runner inside the dashboard. Hub can also chain the agent into multi-agent flows.</td>
+              <td>Copilot Studio agents; org-hosted LLM agents; other teams' agents that expose HTTP/MCP.</td>
+            </tr>
+            <tr>
+              <td><span class="tier b">Tier B · linked</span></td>
+              <td>Hub holds metadata only. Handoff is a deep link into Copilot or Teams, optionally with the prompt prefilled.</td>
+              <td>Rich catalog entry, worked examples, "Open in Copilot" button. No in-hub transcript, no in-hub telemetry.</td>
+              <td>M365 Copilot agent-builder declarative agents.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="fig">
+        <div class="fig-frame">
+          <svg viewBox="0 0 960 356" role="img" aria-label="Side-by-side comparison. In Tier A the user's message passes through the Agent Hub UI, the Agent Gateway and a Copilot Studio adapter before leaving your platform, so transcripts, cost and evaluation data are captured. In Tier B the message leaves your platform immediately after the catalog entry via a deep link into M365 Copilot, so no transcript, cost or evaluation data ever returns.">
+            <defs>
+              <marker id="f1-arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head-a" points="0,0 10,5 0,10"/></marker>
+              <marker id="f1-arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head-b" points="0,0 10,5 0,10"/></marker>
+            </defs>
+
+            <line class="d-life" x1="480" y1="16" x2="480" y2="344"/>
+            <text class="d-hdr-a" x="20" y="30">TIER A — INVOCABLE</text>
+            <text class="d-hdr-b" x="500" y="30">TIER B — LINKED</text>
+
+            <!-- panel A -->
+            <rect class="d-box" x="140" y="50" width="200" height="38" rx="3"/>
+            <text class="d-t" x="240" y="74" text-anchor="middle">User</text>
+
+            <rect class="d-box" x="140" y="112" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="240" y="129" text-anchor="middle">Agent Hub UI</text>
+            <text class="d-m" x="240" y="142" text-anchor="middle">chat runner</text>
+
+            <rect class="d-core" x="140" y="174" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="240" y="191" text-anchor="middle">Agent Gateway</text>
+            <text class="d-m" x="240" y="204" text-anchor="middle">auth · log · meter</text>
+
+            <rect class="d-box" x="140" y="236" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="240" y="253" text-anchor="middle">Copilot Studio adapter</text>
+            <text class="d-m" x="240" y="266" text-anchor="middle">M365 Agents SDK</text>
+
+            <rect class="d-a" x="140" y="298" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="240" y="315" text-anchor="middle">Copilot Studio agent</text>
+            <text class="d-m" x="240" y="328" text-anchor="middle">Microsoft-hosted</text>
+
+            <line class="d-ln-a" x1="240" y1="88" x2="240" y2="108" marker-end="url(#f1-arA)"/>
+            <line class="d-ln-a" x1="240" y1="150" x2="240" y2="170" marker-end="url(#f1-arA)"/>
+            <line class="d-ln-a" x1="240" y1="212" x2="240" y2="232" marker-end="url(#f1-arA)"/>
+            <line class="d-ln-a" x1="240" y1="274" x2="240" y2="294" marker-end="url(#f1-arA)"/>
+
+            <text class="d-l" x="132" y="102" text-anchor="end">opens session</text>
+            <text class="d-l" x="132" y="164" text-anchor="end">POST /messages</text>
+            <text class="d-l" x="132" y="226" text-anchor="end">+ OBO token</text>
+
+            <text class="d-l" x="350" y="190">transcript</text>
+            <text class="d-l" x="350" y="203">cost · evals</text>
+            <text class="d-l" x="350" y="320">streams back</text>
+
+            <line class="d-ln-d" x1="30" y1="285" x2="450" y2="285"/>
+            <text class="d-m" x="450" y="279" text-anchor="end">YOUR PLATFORM ENDS HERE</text>
+
+            <!-- panel B -->
+            <rect class="d-box" x="620" y="50" width="200" height="38" rx="3"/>
+            <text class="d-t" x="720" y="74" text-anchor="middle">User</text>
+
+            <rect class="d-box" x="620" y="112" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="720" y="129" text-anchor="middle">Agent Hub UI</text>
+            <text class="d-m" x="720" y="142" text-anchor="middle">catalog entry only</text>
+
+            <rect class="d-box" x="620" y="174" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="720" y="191" text-anchor="middle">M365 Copilot / Teams</text>
+            <text class="d-m" x="720" y="204" text-anchor="middle">Microsoft's surface</text>
+
+            <rect class="d-b" x="620" y="236" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="720" y="253" text-anchor="middle">Declarative agent</text>
+            <text class="d-m" x="720" y="266" text-anchor="middle">agent builder</text>
+
+            <rect class="d-ext" x="620" y="298" width="200" height="38" rx="3"/>
+            <text class="d-l" x="720" y="315" text-anchor="middle">no transcript · no cost</text>
+            <text class="d-m" x="720" y="328" text-anchor="middle">no eval data</text>
+
+            <line class="d-ln-a" x1="720" y1="88" x2="720" y2="108" marker-end="url(#f1-arA)"/>
+            <line class="d-ln-b" x1="720" y1="150" x2="720" y2="170" marker-end="url(#f1-arB)"/>
+            <line class="d-ln-b" x1="720" y1="212" x2="720" y2="232" marker-end="url(#f1-arB)"/>
+            <line class="d-ln-d" x1="720" y1="274" x2="720" y2="296"/>
+            <line class="d-ln-d" x1="713" y1="278" x2="727" y2="292"/>
+            <line class="d-ln-d" x1="727" y1="278" x2="713" y2="292"/>
+
+            <text class="d-l" x="612" y="102" text-anchor="end">views entry</text>
+            <text class="d-l" x="612" y="164" text-anchor="end">deep link + prompt</text>
+            <text class="d-l" x="612" y="226" text-anchor="end">continues there</text>
+
+            <text class="d-l" x="830" y="255">Microsoft holds</text>
+            <text class="d-l" x="830" y="268">the conversation</text>
+
+            <line class="d-ln-d" x1="510" y1="162" x2="930" y2="162"/>
+            <text class="d-m" x="930" y="156" text-anchor="end">YOUR PLATFORM ENDS HERE</text>
+          </svg>
+        </div>
+        <figcaption><b>Fig 1 — where the conversation lives.</b> The only real difference is how high the boundary sits. In Tier A your gateway is inside it, so every turn is authenticated, logged, metered and evaluable. In Tier B the boundary sits immediately below the catalog entry: the deep link is the last thing you observe, and the crossed line at the bottom is the telemetry that never comes back.</figcaption>
+      </figure>
+
+      <div class="callout">
+        <span class="tag">Policy implication — decide this in week one</span>
+        <p>Make it a published rule: <strong>if an agent needs to be callable by the platform, by another agent, or by a non-Microsoft surface, it is built in Copilot Studio (or as a custom-engine agent), not in agent builder.</strong> Agent builder stays the right tool for lightweight, in-Copilot-only experiences that a business user can maintain themselves.</p>
+        <p>Without this rule, your catalog slowly fills with agents the platform cannot orchestrate, and the hub degrades into a bookmark list.</p>
+      </div>
+
+      <p>One more constraint worth designing around early: the Agents SDK client path for Copilot Studio currently works with <strong>delegated (user) authentication</strong> — app-only service-principal tokens are not supported. Your gateway therefore cannot be a faceless service calling Copilot Studio on a shared identity; it must perform an on-behalf-of exchange and carry the end user's token downstream. That is better for security and for per-user data boundaries, but it means <em>no unattended/batch invocation</em> of Copilot Studio agents until that changes. Plan scheduled or system-triggered agents on the org-hosted side.</p>
+    </section>
+
+    <!-- 02 -->
+    <section id="sources">
+      <div class="sec-head"><span class="sec-num">02</span><h2>What each source can actually do</h2></div>
+      <p class="lede">Verified against current Microsoft guidance, November 2026. Re-check before you build — this surface moves every quarter.</p>
+
+      <div class="sources">
+        <div class="sc">
+          <span class="tier b">Tier B</span>
+          <h3>M365 Copilot — agent builder</h3>
+          <p class="verdict">Declarative agents over the Copilot orchestrator. Fast to author, almost nothing to integrate against.</p>
+          <dl>
+            <dt>Invoke</dt><dd><span class="no">No external API</span> — lives in Copilot / Teams</dd>
+            <dt>Embed</dt><dd>Teams app package; deep link with agent id</dd>
+            <dt>Auth</dt><dd>The signed-in user's own M365 identity</dd>
+            <dt>Custom</dt><dd>Low — instructions, knowledge, actions</dd>
+            <dt>Hub role</dt><dd>Catalog, routing target, deep-link handoff</dd>
+          </dl>
+        </div>
+        <div class="sc">
+          <span class="tier a">Tier A</span>
+          <h3>Copilot Studio</h3>
+          <p class="verdict">The integration workhorse. Several real client paths, Entra SSO, and streaming via the Agents SDK.</p>
+          <dl>
+            <dt>Invoke</dt><dd><span class="yes">Yes</span> — Agents SDK client (.NET/Node/Python) or Direct Line</dd>
+            <dt>Stream</dt><dd>Agents SDK yes; Direct Line not for Studio agents</dd>
+            <dt>Auth</dt><dd>Entra ID SSO, delegated; OBO from gateway</dd>
+            <dt>Custom</dt><dd>High — topics, tools, connectors, MCP</dd>
+            <dt>Hub role</dt><dd>Full in-hub chat runner + orchestration</dd>
+          </dl>
+        </div>
+        <div class="sc">
+          <span class="tier a">Tier A · limited</span>
+          <h3>Org-hosted LLM agents</h3>
+          <p class="verdict">You own the endpoints but not the internals. Absorb the variation in adapters, not in the core.</p>
+          <dl>
+            <dt>Invoke</dt><dd><span class="yes">Yes</span> — existing REST / OpenAI-compatible / MCP</dd>
+            <dt>Stream</dt><dd>Per agent — declare it on the card</dd>
+            <dt>Auth</dt><dd>Varies; normalise at the adapter</dd>
+            <dt>Custom</dt><dd>Low — cannot change agent behaviour</dd>
+            <dt>Hub role</dt><dd>Adapter-wrapped runner; config-driven mapping</dd>
+          </dl>
+        </div>
+        <div class="sc">
+          <span class="tier x">Tier A · federated</span>
+          <h3>Other teams' agents</h3>
+          <p class="verdict">Unknown stacks, so publish a contract rather than a codebase. Three accepted shapes, no bespoke work.</p>
+          <dl>
+            <dt>Contract</dt><dd>MCP server, A2A-style agent card, or plain REST + mapping spec</dd>
+            <dt>Onboard</dt><dd>Self-service wizard or <code>agent.yaml</code> in their repo</dd>
+            <dt>Trust</dt><dd>Health checks, smoke evals, security review, sandbox first</dd>
+            <dt>Hub role</dt><dd>Federated runner; team retains ownership</dd>
+          </dl>
+        </div>
+      </div>
+
+      <p>Because "low customization" is a hard constraint on the org-hosted side, the <strong>adapter layer is where you pay the integration tax</strong> — a per-agent config of endpoint, auth mode, and request/response field mapping, rather than asking those teams to conform to a new contract they cannot implement.</p>
+    </section>
+
+    <!-- 03 -->
+    <section id="architecture">
+      <div class="sec-head"><span class="sec-num">03</span><h2>Target architecture</h2></div>
+      <p class="lede">Five layers and three cross-cutting concerns. The registry is the source of truth; the gateway is the only path to a running agent; the concierge is just another consumer of both.</p>
+
+      <div class="arch">
+        <div class="arch-stack">
+
+          <div class="layer">
+            <div class="layer-label">Surfaces</div>
+            <div class="nodes">
+              <div class="node"><span class="n">Agent Hub web app</span><span class="d">browse · run · admin</span></div>
+              <div class="node"><span class="n">Teams tab / M365 app</span><span class="d">hub where users already are</span></div>
+              <div class="node"><span class="n">Hub API</span><span class="d">for other systems &amp; agents</span></div>
+            </div>
+          </div>
+
+          <div class="seam" aria-hidden="true"></div>
+
+          <div class="layer">
+            <div class="layer-label">Experience</div>
+            <div class="nodes">
+              <div class="node"><span class="n">Catalog &amp; search</span><span class="d">facets, tiers, owners</span></div>
+              <div class="node"><span class="n">Chat runner</span><span class="d">SSE stream, adaptive cards</span></div>
+              <div class="node core"><span class="n">Concierge agent</span><span class="d">"which agent do I need?"</span></div>
+              <div class="node"><span class="n">Admin &amp; onboarding</span><span class="d">intake, review, publish</span></div>
+            </div>
+          </div>
+
+          <div class="seam" aria-hidden="true"></div>
+
+          <div class="layer">
+            <div class="layer-label">Platform core</div>
+            <div class="nodes">
+              <div class="node core"><span class="n">Agent Registry</span><span class="d">Agent Cards · versions · lifecycle</span></div>
+              <div class="node core"><span class="n">Catalog Index</span><span class="d">hybrid keyword + vector</span></div>
+              <div class="node core"><span class="n">Agent Gateway</span><span class="d">invoke · stream · meter · log</span></div>
+              <div class="node core"><span class="n">Policy &amp; entitlements</span><span class="d">who may see / run what</span></div>
+            </div>
+          </div>
+
+          <div class="seam" aria-hidden="true"></div>
+
+          <div class="layer">
+            <div class="layer-label">Adapters</div>
+            <div class="nodes">
+              <div class="node"><span class="n">Copilot Studio</span><span class="d">Agents SDK · Direct Line</span></div>
+              <div class="node"><span class="n">M365 declarative</span><span class="d">deep link + embed only</span></div>
+              <div class="node"><span class="n">Org-hosted HTTP</span><span class="d">config-driven mapping</span></div>
+              <div class="node"><span class="n">MCP / A2A</span><span class="d">federated partner agents</span></div>
+            </div>
+          </div>
+
+          <div class="seam" aria-hidden="true"></div>
+
+          <div class="layer">
+            <div class="layer-label">Agent sources</div>
+            <div class="nodes">
+              <div class="node src-a"><span class="n">Copilot Studio agents</span><span class="d">Tier A</span></div>
+              <div class="node src-b"><span class="n">Agent builder agents</span><span class="d">Tier B — linked</span></div>
+              <div class="node src-a"><span class="n">Org-hosted LLM agents</span><span class="d">Tier A · limited</span></div>
+              <div class="node src-x"><span class="n">Other teams' agents</span><span class="d">Tier A · federated</span></div>
+            </div>
+          </div>
+
+        </div>
+
+        <aside class="arch-rail">
+          <h5>Cross-cutting</h5>
+          <ul>
+            <li><b>Identity</b>Entra ID SSO at the edge; on-behalf-of exchange to every downstream agent so data boundaries follow the user.</li>
+            <li><b>Observability</b>OpenTelemetry trace per session → turn → tool call. Tokens, latency, cost, thumbs, deflection.</li>
+            <li><b>Governance</b>Intake &amp; review workflow, data classification, DLP, audit log, scheduled re-review, eval suites per agent.</li>
+          </ul>
+        </aside>
+      </div>
+      <p class="caption">Dashed seams are request paths. Tier B sources connect to the adapter layer for <em>metadata and deep links only</em> — no runtime traffic crosses that boundary.</p>
+
+      <h3>Why the registry and the gateway are separate services</h3>
+      <p>It is tempting to build one service. Don't. They have different consumers, different scaling profiles and different failure modes. The registry is read-heavy, cacheable, and must stay available for the catalog to work; the gateway is long-lived-connection-heavy, holds user tokens, and will be your noisiest component. Keeping them apart also means a gateway outage degrades the hub to a catalog rather than taking it down.</p>
+
+      <h3>Where the concierge sits</h3>
+      <p>The concierge is deliberately <em>not</em> privileged. It reads the catalog index and the registry through the same APIs as the UI, and it starts sessions through the same gateway. That keeps one enforcement point for entitlements and means anything the concierge can do, a user could have done by hand.</p>
+    </section>
+
+    <!-- 04 -->
+    <section id="card">
+      <div class="sec-head"><span class="sec-num">04</span><h2>The Agent Card</h2></div>
+      <p class="lede">This schema is the product. Routing quality, access control, cost reporting and the onboarding contract all derive from it — get it right before you write any UI.</p>
+
+      <p>Most agent catalogues fail because their entries describe <em>what an agent is</em> rather than <em>when to reach for it</em>. The <code>routing</code> block below is what makes the concierge work; treat <code>use_for</code>, <code>do_not_use_for</code> and <code>example_prompts</code> as mandatory fields, reviewed by a human at publish time.</p>
+
+      <pre><code><span class="c">// registry/cards/fin-invoice-triage.json</span>
+{
+  <span class="key">"id"</span>: <span class="str">"fin-invoice-triage"</span>,          <span class="c">// stable, immutable, slug</span>
+  <span class="key">"version"</span>: <span class="str">"2.3.0"</span>,
+  <span class="key">"name"</span>: <span class="str">"Invoice Triage Assistant"</span>,
+  <span class="key">"status"</span>: <span class="str">"published"</span>,                 <span class="c">// draft|in_review|published|deprecated|retired</span>
+  <span class="key">"source"</span>: <span class="str">"copilot_studio"</span>,            <span class="c">// m365_agent_builder|copilot_studio|org_hosted|federated</span>
+  <span class="key">"interaction"</span>: { <span class="key">"tier"</span>: <span class="str">"A"</span>, <span class="key">"invocable"</span>: true, <span class="key">"streaming"</span>: true, <span class="key">"embeddable"</span>: true },
+
+  <span class="key">"owner"</span>: {
+    <span class="key">"team"</span>: <span class="str">"Finance Ops Automation"</span>,
+    <span class="key">"contact"</span>: <span class="str">"finops-agents@org.example"</span>,
+    <span class="key">"steward_upn"</span>: <span class="str">"a.nowak@org.example"</span>,
+    <span class="key">"escalation"</span>: <span class="str">"finops-oncall"</span>
+  },
+
+  <span class="c">/* ---- drives the concierge. Human-reviewed, not auto-generated. ---- */</span>
+  <span class="key">"routing"</span>: {
+    <span class="key">"summary"</span>: <span class="str">"Classifies inbound supplier invoices, extracts header and line data, and explains validation failures before they reach the AP queue."</span>,
+    <span class="key">"use_for"</span>: [
+      <span class="str">"Finding out why a specific invoice failed validation"</span>,
+      <span class="str">"Pulling PO number and line items out of a scanned invoice"</span>,
+      <span class="str">"Checking which AP policy applies to a supplier document"</span>
+    ],
+    <span class="key">"do_not_use_for"</span>: [
+      <span class="str">"Approving or releasing payment — use the AP approval workflow"</span>,
+      <span class="str">"Vendor master-data changes"</span>,
+      <span class="str">"Anything involving payroll or employee expenses"</span>
+    ],
+    <span class="key">"example_prompts"</span>: [
+      <span class="str">"Why did invoice 4471239 fail validation?"</span>,
+      <span class="str">"Extract the line items from this supplier PDF"</span>
+    ],
+    <span class="key">"keywords"</span>: [<span class="str">"invoice"</span>, <span class="str">"accounts payable"</span>, <span class="str">"AP"</span>, <span class="str">"supplier"</span>, <span class="str">"PO match"</span>, <span class="str">"three-way match"</span>],
+    <span class="key">"audience"</span>: [<span class="str">"finance"</span>, <span class="str">"procurement"</span>],
+    <span class="key">"languages"</span>: [<span class="str">"en"</span>, <span class="str">"pl"</span>, <span class="str">"de"</span>],
+    <span class="key">"related"</span>: [<span class="str">"fin-po-lookup"</span>, <span class="str">"fin-vendor-360"</span>],
+    <span class="key">"escalates_to"</span>: <span class="str">"human:ap-service-desk"</span>
+  },
+
+  <span class="key">"capabilities"</span>: [<span class="str">"document_extraction"</span>, <span class="str">"classification"</span>, <span class="str">"system_lookup"</span>],
+  <span class="key">"tools"</span>: [
+    { <span class="key">"name"</span>: <span class="str">"SAP_InvoiceStatus"</span>, <span class="key">"kind"</span>: <span class="str">"connector"</span>, <span class="key">"writes"</span>: false },
+    { <span class="key">"name"</span>: <span class="str">"AP_PolicySearch"</span>,   <span class="key">"kind"</span>: <span class="str">"mcp"</span>,       <span class="key">"writes"</span>: false }
+  ],
+  <span class="key">"knowledge"</span>: [{ <span class="key">"type"</span>: <span class="str">"sharepoint"</span>, <span class="key">"scope"</span>: <span class="str">"/sites/FinOps/AP-Policies"</span> }],
+  <span class="key">"io"</span>: { <span class="key">"input"</span>: [<span class="str">"text"</span>, <span class="str">"file:pdf"</span>, <span class="str">"file:png"</span>], <span class="key">"output"</span>: [<span class="str">"text"</span>, <span class="str">"adaptive_card"</span>] },
+
+  <span class="key">"access"</span>: {
+    <span class="key">"visibility"</span>: <span class="str">"org"</span>,                   <span class="c">// org|department|restricted — controls catalog listing</span>
+    <span class="key">"entitlement_group"</span>: <span class="str">"SG-AGENT-FIN-INVOICE"</span>,
+    <span class="key">"requestable"</span>: true,
+    <span class="key">"approval"</span>: <span class="str">"manager+owner"</span>
+  },
+  <span class="key">"data"</span>: {
+    <span class="key">"classification"</span>: <span class="str">"confidential"</span>,
+    <span class="key">"pii"</span>: <span class="str">"processes"</span>,                    <span class="c">// none|processes|stores</span>
+    <span class="key">"residency"</span>: <span class="str">"eu-west"</span>,
+    <span class="key">"transcript_retention_days"</span>: 30,
+    <span class="key">"human_in_loop"</span>: <span class="str">"required_for_writes"</span>
+  },
+
+  <span class="key">"endpoint"</span>: {                            <span class="c">// adapter config; secrets live in Key Vault by ref</span>
+    <span class="key">"adapter"</span>: <span class="str">"copilot_studio.agents_sdk"</span>,
+    <span class="key">"environment_id"</span>: <span class="str">"8f21...c4"</span>,
+    <span class="key">"agent_schema_name"</span>: <span class="str">"cr1a2_invoiceTriage"</span>,
+    <span class="key">"auth"</span>: <span class="str">"entra_obo"</span>,
+    <span class="key">"secret_ref"</span>: <span class="str">"kv://agent-hub/cs-invoice-triage"</span>
+  },
+
+  <span class="key">"ops"</span>: {
+    <span class="key">"p95_latency_ms"</span>: 4200,
+    <span class="key">"cost_per_turn_usd"</span>: 0.019,
+    <span class="key">"slo_availability"</span>: 99.5,
+    <span class="key">"eval_suite"</span>: <span class="str">"suites/invoice-triage@v4"</span>,
+    <span class="key">"health_check"</span>: <span class="str">"smoke:every-15m"</span>
+  },
+  <span class="key">"lifecycle"</span>: {
+    <span class="key">"published_at"</span>: <span class="str">"2026-09-14"</span>,
+    <span class="key">"review_due"</span>: <span class="str">"2027-03-14"</span>,     <span class="c">// unreviewed cards auto-flag, then auto-unlist</span>
+    <span class="key">"supersedes"</span>: <span class="str">"fin-invoice-triage@1.x"</span>
+  }
+}</code></pre>
+
+      <h4>Field groups and what depends on them</h4>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Block</th><th>Consumed by</th><th>If it's weak…</th></tr></thead>
+          <tbody>
+            <tr><td class="k">routing</td><td>Concierge retrieval + re-rank; catalog search; related-agent links</td><td>The concierge confidently sends people to the wrong agent. This is the single highest-leverage block.</td></tr>
+            <tr><td class="k">access</td><td>Pre-retrieval entitlement filter; "request access" flow</td><td>Users are recommended agents they cannot open — the fastest way to lose trust in the hub.</td></tr>
+            <tr><td class="k">data</td><td>DLP checks, transcript retention, residency routing, review workflow</td><td>Confidential prompts land in logs they shouldn't, and the hub becomes a compliance finding.</td></tr>
+            <tr><td class="k">endpoint</td><td>Gateway adapter selection and invocation</td><td>Tier A agents fail at runtime; nothing else works.</td></tr>
+            <tr><td class="k">ops</td><td>Health dashboards, cost chargeback, auto-deprecation, eval scheduling</td><td>Dead agents stay listed forever and nobody can attribute spend.</td></tr>
+            <tr><td class="k">lifecycle</td><td>Review reminders, deprecation banners, version pinning</td><td>Catalog rot: the main failure mode of every internal registry.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Store cards as rows <em>and</em> keep them exportable as files — the file form is what makes "agent as code" onboarding (§7) possible without a second schema.</p>
+    </section>
+
+    <!-- 05 -->
+    <section id="concierge">
+      <div class="sec-head"><span class="sec-num">05</span><h2>The concierge agent</h2></div>
+      <p class="lede">"Tell me which agent to use." A retrieval-and-rank problem with an entitlement filter in front of it — not a general-purpose chatbot, and not a place for open-world generation.</p>
+
+      <h3>Resolution pipeline</h3>
+      <div class="pipe">
+        <div class="step"><span class="s"></span><span class="t">Understand the ask</span><span class="b">Normalise the query, pull the user's department, role and recent agents from context. Detect multi-intent asks and split them.</span></div>
+        <div class="step"><span class="s"></span><span class="t">Filter by entitlement</span><span class="b">Hard filter <em>before</em> retrieval: the candidate set only ever contains agents this user may see. Non-negotiable.</span></div>
+        <div class="step"><span class="s"></span><span class="t">Hybrid retrieve</span><span class="b">BM25 + vector search over the routing block and example prompts. Top ~20 candidates with scores.</span></div>
+        <div class="step"><span class="s"></span><span class="t">Re-rank with an LLM</span><span class="b">Full cards for the top candidates go to the model, which weighs <code>do_not_use_for</code> as hard exclusions. Returns top 3.</span></div>
+        <div class="step"><span class="s"></span><span class="t">Answer structurally</span><span class="b">Recommendation, confidence, a one-line why, named alternatives, and an explicit handoff action.</span></div>
+        <div class="step"><span class="s"></span><span class="t">Hand off</span><span class="b">Tier A → open a gateway session, optionally carrying the user's original prompt. Tier B → deep link into Copilot or Teams.</span></div>
+        <div class="step"><span class="s"></span><span class="t">Learn</span><span class="b">Log query, recommendation, whether the user accepted it, and whether the session succeeded. Feeds the eval set and gap mining.</span></div>
+      </div>
+
+      <figure class="fig">
+        <div class="fig-frame">
+          <svg viewBox="0 0 980 300" role="img" aria-label="Flow of a concierge query. The user query passes a hard server-side entitlement filter, then hybrid retrieval of the top twenty candidates, then an LLM re-rank. A confidence decision follows: below the floor the answer is no-match plus a logged gap and a request-agent call to action; at or above the floor a recommendation is produced and handed off either by starting a gateway session for Tier A or building a deep link for Tier B. Both outcomes are logged to the routing events table that feeds the eval set and gap report.">
+            <defs>
+              <marker id="f3-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head" points="0,0 10,5 0,10"/></marker>
+              <marker id="f3-arAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head-acc" points="0,0 10,5 0,10"/></marker>
+            </defs>
+
+            <rect class="d-box" x="20" y="55" width="145" height="38" rx="3"/>
+            <text class="d-t2" x="92" y="79" text-anchor="middle">User query</text>
+
+            <rect class="d-core" x="187" y="55" width="145" height="38" rx="3"/>
+            <text class="d-t2" x="259" y="72" text-anchor="middle">Entitlement filter</text>
+            <text class="d-m" x="259" y="85" text-anchor="middle">hard · server-side</text>
+
+            <rect class="d-box" x="354" y="55" width="145" height="38" rx="3"/>
+            <text class="d-t2" x="426" y="72" text-anchor="middle">Hybrid retrieve</text>
+            <text class="d-m" x="426" y="85" text-anchor="middle">top ~20</text>
+
+            <rect class="d-box" x="521" y="55" width="145" height="38" rx="3"/>
+            <text class="d-t2" x="593" y="72" text-anchor="middle">LLM re-rank</text>
+            <text class="d-m" x="593" y="85" text-anchor="middle">full cards</text>
+
+            <polygon class="d-dia" points="740,44 802,74 740,104 678,74"/>
+            <text class="d-l" x="812" y="71">confidence</text>
+            <text class="d-l" x="812" y="83">≥ floor?</text>
+
+            <line class="d-ln-acc" x1="165" y1="74" x2="183" y2="74" marker-end="url(#f3-arAcc)"/>
+            <line class="d-ln-acc" x1="332" y1="74" x2="350" y2="74" marker-end="url(#f3-arAcc)"/>
+            <line class="d-ln-acc" x1="499" y1="74" x2="517" y2="74" marker-end="url(#f3-arAcc)"/>
+            <line class="d-ln-acc" x1="666" y1="74" x2="674" y2="74" marker-end="url(#f3-arAcc)"/>
+
+            <polyline class="d-ln-d" points="740,104 740,126 480,126 480,146" marker-end="url(#f3-ar)"/>
+            <text class="d-l" x="610" y="121" text-anchor="middle">below floor</text>
+
+            <line class="d-ln-acc" x1="740" y1="104" x2="740" y2="146" marker-end="url(#f3-arAcc)"/>
+            <text class="d-l" x="748" y="140">≥ floor</text>
+
+            <rect class="d-box" x="380" y="148" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="480" y="165" text-anchor="middle">No match · log gap</text>
+            <text class="d-m" x="480" y="178" text-anchor="middle">+ request-agent CTA</text>
+
+            <rect class="d-core" x="620" y="148" width="240" height="38" rx="3"/>
+            <text class="d-t2" x="740" y="165" text-anchor="middle">Recommendation</text>
+            <text class="d-m" x="740" y="178" text-anchor="middle">pick · why · alternatives</text>
+
+            <polyline class="d-ln-acc" points="740,186 740,206 610,206 610,226" marker-end="url(#f3-arAcc)"/>
+            <polyline class="d-ln-acc" points="740,186 740,206 830,206 830,226" marker-end="url(#f3-arAcc)"/>
+
+            <rect class="d-a" x="520" y="228" width="180" height="38" rx="3"/>
+            <text class="d-t2" x="610" y="245" text-anchor="middle">Tier A handoff</text>
+            <text class="d-m" x="610" y="258" text-anchor="middle">start_session()</text>
+
+            <rect class="d-b" x="740" y="228" width="180" height="38" rx="3"/>
+            <text class="d-t2" x="830" y="245" text-anchor="middle">Tier B handoff</text>
+            <text class="d-m" x="830" y="258" text-anchor="middle">build_deeplink()</text>
+
+            <rect class="d-soft" x="40" y="228" width="200" height="38" rx="3"/>
+            <text class="d-t2" x="140" y="245" text-anchor="middle">routing_events</text>
+            <text class="d-m" x="140" y="258" text-anchor="middle">eval set + gap report</text>
+
+            <line class="d-ln-d" x1="518" y1="247" x2="244" y2="247" marker-end="url(#f3-ar)"/>
+            <text class="d-l" x="381" y="241" text-anchor="middle">query · pick · accepted?</text>
+
+            <polyline class="d-ln-d" points="380,167 140,167 140,224" marker-end="url(#f3-ar)"/>
+            <text class="d-l" x="262" y="161" text-anchor="middle">logged gap</text>
+          </svg>
+        </div>
+        <figcaption><b>Fig 3 — the concierge is a filter, a ranker and one decision.</b> The entitlement filter runs before retrieval, not after, so an agent the user cannot open can never be recommended. The confidence floor is what makes the diagram worth drawing: the left branch is a feature, not a failure — every trip down it becomes a logged gap, and the gap report is your catalog roadmap.</figcaption>
+      </figure>
+
+      <h3>Tools the concierge gets</h3>
+      <ul>
+        <li><code>search_agents(query, filters)</code> — entitlement-scoped hybrid search.</li>
+        <li><code>get_agent(id)</code> — full card, for explaining limits and prerequisites.</li>
+        <li><code>compare_agents(ids[])</code> — side-by-side when two candidates genuinely overlap.</li>
+        <li><code>check_access(id)</code> / <code>request_access(id, justification)</code> — turns a dead end into a ticket.</li>
+        <li><code>start_session(id, seed_prompt)</code> — Tier A handoff through the gateway.</li>
+        <li><code>build_deeplink(id, seed_prompt)</code> — Tier B handoff.</li>
+        <li><code>log_gap(query)</code> — explicit "no agent exists for this" signal.</li>
+      </ul>
+
+      <h3>Guardrails</h3>
+      <ul>
+        <li><strong>Closed world.</strong> The system prompt forbids naming any agent not present in the retrieved set. Agent names are the one thing users will act on, so a hallucinated one is worse than no answer.</li>
+        <li><strong>Refuse-to-guess threshold.</strong> Below a confidence floor, the answer is "no good match yet" plus a request-an-agent call to action — and a logged gap. Measure how often this fires; it is your catalog roadmap.</li>
+        <li><strong>Honour the negatives.</strong> A <code>do_not_use_for</code> hit excludes a candidate outright rather than lowering its score.</li>
+        <li><strong>Never widen the user's access.</strong> Entitlement filtering happens in the search tool, server-side, not in the prompt.</li>
+      </ul>
+
+      <h3>Treat routing quality as a tested property</h3>
+      <p>Build a labelled set of <strong>100–200 real queries → expected agent</strong>, harvested from the hub's own search logs and from the service desk. Run it in CI on every change to the router prompt, the index configuration, or the embedding model, and gate releases on top-1 accuracy. Without this, router quality silently decays as the catalog grows — the moment you pass roughly 40 agents, overlapping descriptions start colliding and nobody notices until users stop trusting the recommendations.</p>
+
+      <div class="callout">
+        <span class="tag">Build it twice, or build it once in the right place</span>
+        <p>Users live in Teams, not in your dashboard. Consider implementing the concierge <strong>as a Copilot Studio agent</strong> whose tools point at your registry and gateway APIs. You then get the Teams and Copilot surface for free, and the dashboard consumes the same agent through its own gateway — one implementation, two front doors, and the concierge becomes a working reference for every other Tier A integration.</p>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section id="gateway">
+      <div class="sec-head"><span class="sec-num">06</span><h2>Gateway &amp; invocation contract</h2></div>
+      <p class="lede">One narrow API in front of every agent. Every adapter conforms to it; nothing bypasses it.</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Endpoint</th><th>Purpose</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="k">POST /v1/sessions</td><td>Open a conversation with an agent</td><td>Returns session id + capability flags (streaming, file upload, cards). Enforces entitlement here.</td></tr>
+            <tr><td class="k">POST /v1/sessions/{id}/messages</td><td>Send a turn</td><td>Idempotency key required; files by reference, not inline.</td></tr>
+            <tr><td class="k">GET /v1/sessions/{id}/stream</td><td>Server-sent events</td><td>Normalised event types: <code>token</code>, <code>tool_call</code>, <code>card</code>, <code>citation</code>, <code>done</code>, <code>error</code>. Adapters that can't stream emit one <code>token</code> then <code>done</code>.</td></tr>
+            <tr><td class="k">GET /v1/agents/{id}/handoff</td><td>Tier B deep link</td><td>Builds the Copilot/Teams URL with agent id and optional seeded prompt.</td></tr>
+            <tr><td class="k">POST /v1/sessions/{id}/feedback</td><td>Thumbs + free text</td><td>Joined to the trace; primary quality signal.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="fig">
+        <div class="fig-frame">
+          <svg viewBox="0 0 960 410" role="img" aria-label="Sequence diagram of one Tier A turn. The React app posts to the Agent Gateway with the user's token; the gateway exchanges it with Entra ID on behalf of the user, loads the Agent Card from Postgres, checks the user's group claim against the card's entitlement, calls Copilot Studio through the Agents SDK, relays streamed activities back to the browser as server-sent events, and finally writes the transcript, cost and trace.">
+            <defs>
+              <marker id="f2-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head" points="0,0 10,5 0,10"/></marker>
+              <marker id="f2-arAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head-acc" points="0,0 10,5 0,10"/></marker>
+            </defs>
+
+            <rect class="d-box" x="10" y="20" width="150" height="34" rx="3"/>
+            <text class="d-t2" x="85" y="36" text-anchor="middle">React app</text>
+            <text class="d-m" x="85" y="48" text-anchor="middle">browser</text>
+
+            <rect class="d-core" x="210" y="20" width="150" height="34" rx="3"/>
+            <text class="d-t2" x="285" y="36" text-anchor="middle">Agent Gateway</text>
+            <text class="d-m" x="285" y="48" text-anchor="middle">.NET 10</text>
+
+            <rect class="d-soft" x="395" y="20" width="150" height="34" rx="3"/>
+            <text class="d-t2" x="470" y="36" text-anchor="middle">Entra ID</text>
+            <text class="d-m" x="470" y="48" text-anchor="middle">on-behalf-of</text>
+
+            <rect class="d-a" x="580" y="20" width="150" height="34" rx="3"/>
+            <text class="d-t2" x="655" y="36" text-anchor="middle">Copilot Studio</text>
+            <text class="d-m" x="655" y="48" text-anchor="middle">Tier A agent</text>
+
+            <rect class="d-soft" x="790" y="20" width="150" height="34" rx="3"/>
+            <text class="d-t2" x="865" y="36" text-anchor="middle">Postgres + Blob</text>
+            <text class="d-m" x="865" y="48" text-anchor="middle">card · transcript</text>
+
+            <line class="d-life" x1="85" y1="54" x2="85" y2="390"/>
+            <line class="d-life" x1="285" y1="54" x2="285" y2="390"/>
+            <line class="d-life" x1="470" y1="54" x2="470" y2="390"/>
+            <line class="d-life" x1="655" y1="54" x2="655" y2="390"/>
+            <line class="d-life" x1="865" y1="54" x2="865" y2="390"/>
+
+            <line class="d-ln-acc" x1="85" y1="84" x2="283" y2="84" marker-end="url(#f2-arAcc)"/>
+            <text class="d-l" x="92" y="78">1 · POST /v1/sessions + user token</text>
+
+            <line class="d-ln-acc" x1="285" y1="120" x2="468" y2="120" marker-end="url(#f2-arAcc)"/>
+            <text class="d-l" x="292" y="114">2 · OBO exchange</text>
+
+            <line class="d-ln-d" x1="470" y1="156" x2="287" y2="156" marker-end="url(#f2-ar)"/>
+            <text class="d-l" x="463" y="150" text-anchor="end">3 · downstream token</text>
+
+            <line class="d-ln-acc" x1="285" y1="192" x2="863" y2="192" marker-end="url(#f2-arAcc)"/>
+            <text class="d-l" x="292" y="186">4 · load Agent Card</text>
+
+            <polyline class="d-ln-acc" points="285,222 332,222 332,240 289,240" marker-end="url(#f2-arAcc)"/>
+            <text class="d-l" x="340" y="228">5 · check group claim</text>
+
+            <line class="d-ln-acc" x1="285" y1="268" x2="653" y2="268" marker-end="url(#f2-arAcc)"/>
+            <text class="d-l" x="292" y="262">6 · Agents SDK · send activity</text>
+
+            <line class="d-ln-d" x1="655" y1="304" x2="287" y2="304" marker-end="url(#f2-ar)"/>
+            <text class="d-l" x="648" y="298" text-anchor="end">7 · streamed activities</text>
+
+            <line class="d-ln-d" x1="285" y1="340" x2="87" y2="340" marker-end="url(#f2-ar)"/>
+            <text class="d-l" x="278" y="334" text-anchor="end">8 · SSE: token · card · done</text>
+
+            <line class="d-ln-acc" x1="285" y1="376" x2="863" y2="376" marker-end="url(#f2-arAcc)"/>
+            <text class="d-l" x="292" y="370">9 · transcript + cost + trace</text>
+          </svg>
+        </div>
+        <figcaption><b>Fig 2 — one Tier A turn, end to end.</b> Steps 2 and 3 are the part teams get wrong: the gateway never calls Copilot Studio as itself. It trades the user's token for a downstream one, so the agent sees the real user and returns only what that user could already read. Step 5 is the entitlement check — server-side, against the card, after the card is loaded and never in the browser.</figcaption>
+      </figure>
+
+      <h3>Adapter responsibilities</h3>
+      <p>An adapter translates the contract above into one source's reality, and nothing more. Shared concerns — auth exchange, retry, timeout, redaction, content safety, metering, tracing — live in the gateway pipeline so they are implemented once and cannot be forgotten by an adapter author.</p>
+      <ul>
+        <li><strong>Copilot Studio adapter.</strong> Agents SDK client where streaming matters, Direct Line where it doesn't. Carries the user's delegated token via OBO; maps adaptive cards and citations onto the normalised event types.</li>
+        <li><strong>M365 declarative adapter.</strong> No runtime path. Builds deep links, and — where available — pulls agent inventory so the registry can reconcile what exists in the tenant against what's catalogued.</li>
+        <li><strong>Org-hosted adapter.</strong> One generic implementation driven by per-agent config: base URL, auth mode, and a request/response field mapping. Because you can't change these agents, the mapping spec is what absorbs their differences — aim to onboard a new one with config only, no code.</li>
+        <li><strong>MCP / A2A adapter.</strong> For other teams. Standardise on MCP for tool-shaped agents and an A2A-style card for conversational ones.</li>
+      </ul>
+
+      <h3>Conversation state</h3>
+      <p>Decide explicitly who owns history. Copilot Studio keeps its own conversation state, your org-hosted agents may be stateless, and the hub needs transcripts for audit and evaluation regardless. Recommended: the gateway persists a <em>hub-side transcript</em> for every Tier A session (for audit, feedback and evals) while passing the source's native conversation id through on each turn. Don't try to replay hub history into a source that's already tracking it — you'll double the context and the cost.</p>
+    </section>
+
+    <!-- 07 -->
+    <section id="onboarding">
+      <div class="sec-head"><span class="sec-num">07</span><h2>Onboarding other teams</h2></div>
+      <p class="lede">The hub only stays useful if publishing an agent doesn't require your team. Two paths to the same registry API, one review gate.</p>
+
+      <figure class="fig">
+        <div class="fig-frame">
+          <svg viewBox="0 0 960 230" role="img" aria-label="State machine for an agent card. Draft moves to Validating on submit, to In review when all automated checks pass, to Pilot after three sign-offs, and to Published when pilot exit criteria are met. Failed checks return it to Draft, and requested changes from review also return it to Draft. From Published, a failed health check or eval, or an overdue review, moves it to Flagged; a grace period then moves it to Unlisted, while a fix returns it to Published.">
+            <defs>
+              <marker id="f4-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head" points="0,0 10,5 0,10"/></marker>
+              <marker id="f4-arAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head-acc" points="0,0 10,5 0,10"/></marker>
+              <marker id="f4-arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head-b" points="0,0 10,5 0,10"/></marker>
+            </defs>
+
+            <text class="d-l" x="164" y="46" text-anchor="middle">submit</text>
+            <text class="d-l" x="314" y="46" text-anchor="middle">all green</text>
+            <text class="d-l" x="464" y="46" text-anchor="middle">3 sign-offs</text>
+            <text class="d-l" x="614" y="46" text-anchor="middle">exit met</text>
+
+            <rect class="d-soft" x="30" y="55" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="90" y="79" text-anchor="middle">Draft</text>
+
+            <rect class="d-box" x="180" y="55" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="240" y="79" text-anchor="middle">Validating</text>
+
+            <rect class="d-box" x="330" y="55" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="390" y="79" text-anchor="middle">In review</text>
+
+            <rect class="d-box" x="480" y="55" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="540" y="79" text-anchor="middle">Pilot</text>
+
+            <rect class="d-core" x="630" y="55" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="690" y="79" text-anchor="middle">Published</text>
+
+            <line class="d-ln-acc" x1="150" y1="75" x2="176" y2="75" marker-end="url(#f4-arAcc)"/>
+            <line class="d-ln-acc" x1="300" y1="75" x2="326" y2="75" marker-end="url(#f4-arAcc)"/>
+            <line class="d-ln-acc" x1="450" y1="75" x2="476" y2="75" marker-end="url(#f4-arAcc)"/>
+            <line class="d-ln-acc" x1="600" y1="75" x2="626" y2="75" marker-end="url(#f4-arAcc)"/>
+
+            <polyline class="d-ln-d" points="240,95 240,122 110,122 110,99" marker-end="url(#f4-ar)"/>
+            <text class="d-l" x="178" y="117" text-anchor="middle">checks fail</text>
+
+            <polyline class="d-ln-d" points="390,95 390,146 70,146 70,99" marker-end="url(#f4-ar)"/>
+            <text class="d-l" x="235" y="141" text-anchor="middle">changes requested</text>
+
+            <rect class="d-b" x="630" y="165" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="690" y="189" text-anchor="middle">Flagged</text>
+
+            <rect class="d-soft" x="790" y="165" width="120" height="40" rx="3"/>
+            <text class="d-t2" x="850" y="189" text-anchor="middle">Unlisted</text>
+
+            <line class="d-ln-b" x1="690" y1="95" x2="690" y2="161" marker-end="url(#f4-arB)"/>
+            <text class="d-l" x="702" y="122">health or eval fail</text>
+            <text class="d-l" x="702" y="135">review overdue</text>
+
+            <line class="d-ln-b" x1="750" y1="185" x2="786" y2="185" marker-end="url(#f4-arB)"/>
+            <text class="d-l" x="768" y="178" text-anchor="middle">grace</text>
+
+            <polyline class="d-ln-d" points="630,185 612,185 612,75 626,75" marker-end="url(#f4-ar)"/>
+            <text class="d-l" x="604" y="140" text-anchor="end">fixed</text>
+          </svg>
+        </div>
+        <figcaption><b>Fig 4 — the card's lifecycle, including the paths backwards.</b> The forward row is the easy part. What keeps the catalog honest are the three return edges: failed checks and review changes bounce to Draft, and <b>Published is not terminal</b> — a failing health check, a failing eval or a missed <code>review_due</code> date flags the agent automatically, and the grace period unlists it if nobody responds.</figcaption>
+      </figure>
+
+      <div class="phases">
+        <div class="phase">
+          <div class="ph-id">Step 1<span>Author</span></div>
+          <div class="ph-body"><h3>Wizard or <code>agent.yaml</code></h3><p>Business owners use a guided form that teaches the routing fields by asking the right questions ("what should someone <em>not</em> use this for?"). Engineering teams commit <code>agent.yaml</code> and publish from CI — same schema, reviewed as a pull request.</p></div>
+          <div class="ph-exit"><b>Output</b>A draft card in the registry, visible only to its owners.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Step 2<span>Validate</span></div>
+          <div class="ph-body"><h3>Automated gates</h3><p>Schema validation, endpoint reachability, auth handshake, and a smoke run of the declared example prompts. Duplicate detection against the existing catalog by embedding similarity — flag near-identical agents for a conversation rather than letting both ship.</p></div>
+          <div class="ph-exit"><b>Gate</b>All checks green, or the card cannot move to review.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Step 3<span>Review</span></div>
+          <div class="ph-body"><h3>Security, data and routing review</h3><p>Three reviewers, each on a checklist: security (auth, egress, write actions, human-in-loop), data (classification, PII, residency, retention), and catalog stewardship (is the routing block good enough that the concierge will do the right thing?).</p></div>
+          <div class="ph-exit"><b>Gate</b>Sign-off recorded on the card version; audit-visible.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Step 4<span>Pilot</span></div>
+          <div class="ph-body"><h3>Sandbox visibility</h3><p>Published to a named pilot group only. Concierge may recommend it to that group. Collect real queries and feedback for a fixed window before opening it up.</p></div>
+          <div class="ph-exit"><b>Exit</b>Agreed pilot volume reached with no blocking feedback.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Step 5<span>Publish</span></div>
+          <div class="ph-body"><h3>Into the catalog and the index</h3><p>Card goes live, index is rebuilt, concierge picks it up on the next retrieval. Owners get a dashboard: usage, cost, feedback, eval results, open access requests.</p></div>
+          <div class="ph-exit"><b>Output</b>Discoverable, routable, measured.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Step 6<span>Keep honest</span></div>
+          <div class="ph-body"><h3>Health, evals, re-review</h3><p>Scheduled health checks and eval runs. Sustained failures or a missed <code>review_due</code> date auto-flag the card, then auto-unlist it. Owner changes trigger a stewardship handover task rather than silently orphaning the agent.</p></div>
+          <div class="ph-exit"><b>Why</b>Catalog rot is the default outcome. This step is what prevents it.</div>
+        </div>
+      </div>
+
+      <p>Publish the contract as documentation plus a starter repo: schema, a local validator, an MCP server template, and a conformance test suite teams can run before they ever talk to you. The measure of success for Phase 4 is that a team you've never met gets an agent published without opening a ticket.</p>
+    </section>
+
+    <!-- 08 -->
+    <section id="governance">
+      <div class="sec-head"><span class="sec-num">08</span><h2>Identity, security, governance</h2></div>
+
+      <h3>Identity chain</h3>
+      <p>Entra ID SSO at the hub edge. The gateway exchanges the user's token for a downstream token per agent (on-behalf-of) so that <strong>every agent sees the real user and their real permissions</strong>. This is the single most important security property of the design: it means a Copilot Studio agent reading SharePoint returns only what that user could already read, and you never have to build a parallel authorisation model over corporate content.</p>
+      <p>Agent-to-agent calls get their own workload identity, scoped and auditable — not a borrowed user token. If your tenant has Entra Agent ID available, use it rather than inventing service-principal conventions.</p>
+
+      <h3>Access control, two levels</h3>
+      <ul>
+        <li><strong>Visibility</strong> — whether the agent appears in catalog and concierge results. Default to broad: discoverability is the point of the hub.</li>
+        <li><strong>Entitlement</strong> — whether the user may actually run it, backed by a security group. Visible-but-not-entitled is a good state: the user sees the agent exists and gets a "request access" button.</li>
+      </ul>
+
+      <h3>Don't rebuild the Microsoft control plane</h3>
+      <p>Microsoft Agent 365 and the Microsoft 365 admin center now provide tenant-level agent inventory and governance — agent identity, lifecycle, and admin visibility over Copilot Studio and declarative agents. Your hub should <strong>consume</strong> that inventory, not compete with it.</p>
+      <p>The split that keeps you out of trouble: <em>Microsoft's control plane answers "what agents exist in this tenant and are they safe?"; your hub answers "what should I use for this task, and how do I run it?"</em> Reconcile against the tenant inventory on a schedule so you can flag agents that exist but aren't catalogued, and catalogued agents that have disappeared.</p>
+
+      <h3>Data protection</h3>
+      <ul>
+        <li>Redact detected secrets and configurable PII patterns before prompts reach your own logs — transcripts are the most sensitive thing this platform will hold.</li>
+        <li>Set transcript retention per agent from the card's <code>data</code> block; default short, extend only with justification.</li>
+        <li>Gate publication on data classification: a <code>restricted</code> agent cannot have <code>visibility: org</code>.</li>
+        <li>Require human-in-the-loop declaration for any agent with write-capable tools, and surface that badge in the catalog so users know before they start.</li>
+        <li>Keep Purview/DLP policy in the loop rather than reimplementing it in the gateway.</li>
+      </ul>
+    </section>
+
+    <!-- 09 -->
+    <section id="observability">
+      <div class="sec-head"><span class="sec-num">09</span><h2>Observability &amp; cost</h2></div>
+
+      <p>Instrument with OpenTelemetry on a three-level span hierarchy — <strong>session → turn → tool call</strong> — with agent id, source, tier, adapter, user's department and cost attached as attributes. That single trace shape answers almost every question you'll be asked in month three.</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Question</th><th>Metric</th><th>Why it matters</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Is the hub working?</td><td>Concierge acceptance rate; search-to-session conversion</td><td>The core promise is "find me the right agent". This is whether that lands.</td></tr>
+            <tr><td class="k">Is routing good?</td><td>Top-1 accuracy on the labelled eval set; "no match" rate</td><td>Gates releases of the router. The "no match" rate doubles as your catalog gap backlog.</td></tr>
+            <tr><td class="k">Which agents earn their keep?</td><td>Sessions, unique users, thumbs-up rate, task completion per agent</td><td>Drives deprecation conversations with owners and exposes duplicates.</td></tr>
+            <tr><td class="k">What does this cost?</td><td>Tokens and cost per turn / agent / department; Copilot Studio message consumption</td><td>Chargeback, and early warning before a popular agent blows a capacity budget.</td></tr>
+            <tr><td class="k">What's missing?</td><td>Clustered unmatched queries</td><td>The highest-value product input you will get. Review it monthly with agent owners.</td></tr>
+            <tr><td class="k">Is anything degrading?</td><td>p95 latency, error rate, eval regressions per agent</td><td>Feeds auto-flagging and the owner dashboard.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Note the asymmetry you've accepted: <strong>Tier B agents produce almost no telemetry.</strong> You will see that a user clicked through to a declarative agent and nothing after that. Report Tier A and Tier B separately rather than averaging them into a number that means nothing — and use the gap as a concrete argument when deciding whether a popular declarative agent should be rebuilt in Copilot Studio.</p>
+    </section>
+
+    <!-- 10 -->
+    <section id="stack">
+      <div class="sec-head"><span class="sec-num">10</span><h2>Technology stack</h2></div>
+      <p class="lede">Azure-centric, because your identity, your content and two of your three agent sources already are. The first three rows are <strong>decided</strong>; substitute the rest freely, but keep the Entra and OBO path intact — that's the part that's expensive to retrofit.</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Layer</th><th>Choice</th><th>Rationale</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Web app</td><td><strong>React + TypeScript, custom UI</strong><br><span class="d">Fluent UI recommended</span></td><td>Decided. Fluent UI is worth adopting even for a custom design — it makes the hub feel native beside Teams and M365, and ships as a Teams tab with little extra work.</td></tr>
+            <tr><td class="k">Registry &amp; gateway</td><td><strong>.NET 10</strong> (ASP.NET Core, two services)</td><td>Decided — and the right call: the Microsoft 365 Agents SDK is first-class in .NET, which is exactly the adapter that carries the most risk. Minimal APIs for the registry, Kestrel + SSE for the gateway.</td></tr>
+            <tr><td class="k">Primary database</td><td><strong>Azure Database for PostgreSQL</strong> Flexible Server<br><span class="d">relational core + JSONB cards + pgvector</span></td><td>Decided. See §11 — the hard questions are joins and aggregates over ownership, reviews, grants and cost, and JSONB gives card-schema flexibility without a second datastore. Azure SQL is an equally valid substitute if the org mandates it.</td></tr>
+            <tr><td class="k">Hosting</td><td>Azure Container Apps (AKS if you already run it)</td><td>Scale-to-zero for the registry, long-lived connections and SSE for the gateway.</td></tr>
+            <tr><td class="k">Edge</td><td>Azure API Management</td><td>Rate limits, quotas, subscription keys for agent-to-agent callers, one place for API policy.</td></tr>
+            <tr><td class="k">Catalog index</td><td>pgvector + tsvector in Postgres → Azure AI Search later</td><td>Hybrid search in the database you already run is sufficient up to a few hundred agents, and your LLM re-ranker does the quality work. Move to AI Search when the catalog or the latency says so, not before.</td></tr>
+            <tr><td class="k">Sessions / cache</td><td>Azure Cache for Redis</td><td>Session state, streaming fan-out, hot card cache.</td></tr>
+            <tr><td class="k">Transcripts</td><td>Blob Storage, lifecycle-managed</td><td>Cheap, and retention rules map directly onto the card's retention field.</td></tr>
+            <tr><td class="k">Concierge model</td><td>Azure OpenAI (chat + embeddings)</td><td>In-tenant, in-region, with your existing data agreements.</td></tr>
+            <tr><td class="k">Data access</td><td>EF Core 10 + Npgsql, Managed Identity auth</td><td>Card POCO maps straight into the JSONB column via owned-entity JSON mapping. No connection-string secrets anywhere.</td></tr>
+            <tr><td class="k">Orchestration</td><td>Microsoft Agent Framework / Semantic Kernel (.NET)</td><td>For the concierge's tool loop and later multi-agent chaining. Staying in .NET keeps one language across registry, gateway and orchestration.</td></tr>
+            <tr><td class="k">Copilot Studio client</td><td>Microsoft 365 Agents SDK</td><td>Streaming plus Entra SSO without magic codes; one app registration.</td></tr>
+            <tr><td class="k">Secrets</td><td>Key Vault, referenced from cards</td><td>Cards stay shareable and reviewable in plain text.</td></tr>
+            <tr><td class="k">Telemetry</td><td>OpenTelemetry → Application Insights</td><td>Standard span shape, swappable backend.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section id="data">
+      <div class="sec-head"><span class="sec-num">11</span><h2>Data model &amp; entitlements</h2></div>
+      <p class="lede">Relational, with the card body in JSONB. But the first decision here isn't SQL versus NoSQL — it's refusing to own data that Entra ID already owns.</p>
+
+      <div class="callout">
+        <span class="tag">Do not store user → agent access in this database</span>
+        <p>The obvious move is a <code>user_agent_access</code> table. Resist it. Entitlements belong in <strong>Entra ID security groups</strong>, read from the user's token at invoke time (or from Graph for admin views).</p>
+        <p>Owning that mapping yourself means owning joiner/mover/leaver provisioning, deprovisioning on a department change, periodic access reviews, attestation reporting — and a long conversation with security about why agent access is the one thing in the org that doesn't flow through the standard path. That is permanent work to avoid a single join.</p>
+        <p>So the card carries <code>access.entitlement_group</code>, and this database stores the <em>mapping and the paper trail</em> — never per-user rows.</p>
+      </div>
+
+      <h3>Why relational wins here</h3>
+      <p>It isn't about scale — you have one tenant, a few hundred agents and a few thousand users. It's about the shape of the questions you will be asked, mostly by people who audit things:</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Question you'll be asked</th><th>Shape</th></tr></thead>
+          <tbody>
+            <tr><td>"Show every agent this user can run, with owner and last review date"</td><td>3-way join</td></tr>
+            <tr><td>"Which agents are past <code>review_due</code> and still had &gt;100 sessions last month?"</td><td>Join + aggregate</td></tr>
+            <tr><td>"Who approved access to the restricted finance agent, when, and has it expired?"</td><td>Audit join, strong consistency</td></tr>
+            <tr><td>"Cost per department this quarter"</td><td>Aggregate across sessions</td></tr>
+            <tr><td>"Which card versions did this reviewer sign off?"</td><td>Join on version history</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Every one is a multi-entity join or aggregate with an auditor eventually reading the output. In a document store you would denormalise owners and entitlements into each agent document, then fight drift on precisely the data that gets audited.</p>
+
+      <h3>Schema</h3>
+      <pre><code>teams              (id, name, contact, steward_upn, escalation)
+agents             (id, slug, status, source, tier, owner_team_id, current_version)
+agent_versions     (id, agent_id, semver, card JSONB, published_at,
+                    superseded_by, created_by, embedding vector(1536))
+agent_reviews      (agent_version_id, reviewer_upn, kind, decision, notes, at)
+                   <span class="c">-- kind: security | data | routing</span>
+
+agent_entitlements (agent_id, entra_group_id, scope)
+                   <span class="c">-- scope: view | run. Mapping only — no user rows.</span>
+access_requests    (id, agent_id, requester_upn, justification, status,
+                    approver_upn, decided_at, expires_at)
+                   <span class="c">-- the audit trail, which genuinely is yours</span>
+
+sessions           (id, agent_id, agent_version, user_oid, started_at, ended_at,
+                    turn_count, total_cost_usd, status, transcript_uri)
+turns              (session_id, idx, latency_ms, in_tokens, out_tokens,
+                    cost_usd, tool_calls JSONB)
+feedback           (session_id, turn_idx, rating, text, at)
+
+routing_events     (id, query_redacted, recommended_agent_id, confidence,
+                    accepted, session_id, at)
+                   <span class="c">-- doubles as the eval set and the catalog gap backlog</span>
+eval_runs          (agent_id, suite, score, at, details JSONB)</code></pre>
+      <p class="caption">JSONB on <code>agent_versions.card</code> is deliberate: the card schema will churn for six months and you do not want forty migrations chasing it. Everything that gets joined or audited stays in columns.</p>
+
+      <figure class="fig">
+        <div class="fig-frame">
+          <svg viewBox="0 0 960 350" role="img" aria-label="Ownership boundary diagram. The agent hub PostgreSQL database holds three groups of tables: catalog (teams, agents, agent_versions, agent_reviews), access trail (agent_entitlements, access_requests) and runtime (sessions, turns, feedback, routing_events, eval_runs). Three systems outside it are referenced but not owned: Entra ID security groups via entra_group_id, Blob Storage transcripts via transcript_uri, and Application Insights traces via OpenTelemetry export. No per-user entitlement rows exist in the database.">
+            <defs>
+              <marker id="f5-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon class="d-head" points="0,0 10,5 0,10"/></marker>
+            </defs>
+
+            <text class="d-hdr-acc" x="20" y="38">AGENT HUB DATABASE — POSTGRESQL · YOURS</text>
+            <text class="d-hdr" x="700" y="38">REFERENCED, NOT OWNED</text>
+
+            <rect class="d-own" x="20" y="48" width="580" height="264" rx="4"/>
+
+            <text class="d-hdr" x="36" y="72">CATALOG</text>
+            <text class="d-hdr" x="212" y="72">ACCESS TRAIL</text>
+            <text class="d-hdr" x="402" y="72">RUNTIME</text>
+
+            <rect class="d-box" x="36" y="84" width="164" height="26" rx="2"/>
+            <text class="d-n" x="45" y="101">teams</text>
+            <rect class="d-box" x="36" y="117" width="164" height="26" rx="2"/>
+            <text class="d-n" x="45" y="134">agents</text>
+            <rect class="d-box" x="36" y="150" width="164" height="26" rx="2"/>
+            <text class="d-n" x="45" y="167">agent_versions</text>
+            <rect class="d-box" x="36" y="183" width="164" height="26" rx="2"/>
+            <text class="d-n" x="45" y="200">agent_reviews</text>
+
+            <rect class="d-box" x="212" y="84" width="178" height="26" rx="2"/>
+            <text class="d-n" x="221" y="101">agent_entitlements</text>
+            <rect class="d-box" x="212" y="117" width="178" height="26" rx="2"/>
+            <text class="d-n" x="221" y="134">access_requests</text>
+            <text class="d-m" x="212" y="160">group id + audit trail only</text>
+            <text class="d-m" x="212" y="173">no user rows</text>
+
+            <rect class="d-box" x="402" y="84" width="182" height="26" rx="2"/>
+            <text class="d-n" x="411" y="101">sessions</text>
+            <rect class="d-box" x="402" y="117" width="182" height="26" rx="2"/>
+            <text class="d-n" x="411" y="134">turns</text>
+            <rect class="d-box" x="402" y="150" width="182" height="26" rx="2"/>
+            <text class="d-n" x="411" y="167">feedback</text>
+            <rect class="d-box" x="402" y="183" width="182" height="26" rx="2"/>
+            <text class="d-n" x="411" y="200">routing_events</text>
+            <rect class="d-box" x="402" y="216" width="182" height="26" rx="2"/>
+            <text class="d-n" x="411" y="233">eval_runs</text>
+
+            <line class="d-ln-d" x1="36" y1="268" x2="584" y2="268"/>
+            <text class="d-l" x="310" y="292" text-anchor="middle">No per-user entitlement rows — membership is read from the user's token.</text>
+
+            <rect class="d-ext" x="700" y="84" width="240" height="52" rx="3"/>
+            <text class="d-t2" x="712" y="105">Entra ID</text>
+            <text class="d-m" x="712" y="121">owns: who has access</text>
+
+            <rect class="d-ext" x="700" y="152" width="240" height="52" rx="3"/>
+            <text class="d-t2" x="712" y="173">Blob Storage</text>
+            <text class="d-m" x="712" y="189">owns: message content</text>
+
+            <rect class="d-ext" x="700" y="220" width="240" height="52" rx="3"/>
+            <text class="d-t2" x="712" y="241">Application Insights</text>
+            <text class="d-m" x="712" y="257">owns: raw telemetry</text>
+
+            <line class="d-ln-d" x1="602" y1="110" x2="696" y2="110" marker-end="url(#f5-ar)"/>
+            <text class="d-l" x="649" y="103" text-anchor="middle">entra_group_id</text>
+
+            <line class="d-ln-d" x1="602" y1="178" x2="696" y2="178" marker-end="url(#f5-ar)"/>
+            <text class="d-l" x="649" y="171" text-anchor="middle">transcript_uri</text>
+
+            <line class="d-ln-d" x1="602" y1="246" x2="696" y2="246" marker-end="url(#f5-ar)"/>
+            <text class="d-l" x="649" y="239" text-anchor="middle">OTel export</text>
+          </svg>
+        </div>
+        <figcaption><b>Fig 5 — what the hub owns versus what it points at.</b> Three dashed boxes, three reference columns, and no fourth arrow going the other way. Each dashed box is a system that already solves its problem well: identity, content storage and telemetry. Every one you pull inside the solid boundary is a system you have to operate, secure and defend in an audit.</figcaption>
+      </figure>
+
+      <h3>What deliberately isn't in the database</h3>
+      <ul>
+        <li><strong>Message content.</strong> Transcripts go to Blob Storage, referenced by <code>sessions.transcript_uri</code>, with lifecycle rules driven by the card's <code>transcript_retention_days</code>. Prompts are the most sensitive thing this platform holds — keep them out of your OLTP store <em>and</em> out of its backups.</li>
+        <li><strong>Raw telemetry.</strong> <code>turns</code> holds metered aggregates for cost attribution only; traces go to Application Insights. Don't let the registry database become a log sink.</li>
+        <li><strong>Per-user entitlement rows.</strong> Per the callout above.</li>
+      </ul>
+
+      <h3>The options, honestly compared</h3>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Option</th><th>Verdict</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="k">Azure PostgreSQL<br>Flexible Server</td>
+              <td><span class="tier a">Recommended</span></td>
+              <td>Relational rigour where it matters, JSONB where it helps, and <code>pgvector</code> + <code>tsvector</code> mean one database also serves hybrid catalog search — letting you defer Azure AI Search entirely through Phase 3. Cheaper, no licensing, excellent Npgsql/EF Core support.</td>
+            </tr>
+            <tr>
+              <td class="k">Azure SQL Database</td>
+              <td><span class="tier b">Valid substitute</span></td>
+              <td>Pick this if the org mandates a Microsoft-only data platform, you have SQL DBAs and no Postgres practice, or procurement is simply faster. Equally capable; serverless tier auto-pauses cheaply. You then add Azure AI Search in Phase 3 rather than getting vectors for free.</td>
+            </tr>
+            <tr>
+              <td class="k">Cosmos DB</td>
+              <td><span class="no">Not recommended</span></td>
+              <td>Built for global multi-region writes and partition-key-shaped access at scale you will never reach here. You'd trade the audit queries above and predictable cost for nothing you need. Reasonable later as a transcript store if you need to query inside conversations.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>.NET 10 implementation notes</h3>
+      <ul>
+        <li><strong>EF Core 10 + Npgsql.</strong> Map the card POCO into the JSONB column with owned-entity JSON mapping, so you get typed access without a migration per schema tweak.</li>
+        <li><strong>Managed Identity to the database.</strong> No connection-string secrets in config, Key Vault or pipelines.</li>
+        <li><strong>One JSON Schema for the Agent Card</strong>, enforced at both the registry API boundary and the <code>agent.yaml</code> CI check. One contract, two enforcement points — this is what makes §7 self-service work.</li>
+        <li><strong>Entitlement checks are server-side in the gateway only.</strong> The React app may hide whatever it likes for UX, but that is cosmetic and must never be the control.</li>
+        <li><strong>React side:</strong> MSAL for auth, TanStack Query against the registry API, <code>EventSource</code> for the gateway's SSE stream.</li>
+        <li><strong>Instrument cost from day one</strong> even while the budget is central — <code>sessions.total_cost_usd</code> and <code>turns.cost_usd</code> are painful to backfill when chargeback arrives in Phase 5.</li>
+      </ul>
+    </section>
+
+    <!-- 12 -->
+    <section id="roadmap">
+      <div class="sec-head"><span class="sec-num">12</span><h2>Delivery roadmap</h2></div>
+      <p class="lede">Sequenced so the hub is useful at the end of Phase 1 and every phase after that is additive. Durations assume a team of 4–6; phases 2 and 3 can overlap.</p>
+
+      <div class="phases">
+        <div class="phase">
+          <div class="ph-id">Phase 0<span>~3 weeks</span></div>
+          <div class="ph-body"><h3>Foundations</h3><p>Inventory every agent that exists today across the three sources and name an owner for each. Design and sign off Agent Card v1. Confirm the Copilot Studio client path and auth model with a throwaway spike. Settle the agent-builder-vs-Studio policy.</p></div>
+          <div class="ph-exit"><b>Exit criteria</b>Schema signed off by security and data; every known agent inventoried with a named owner; one Copilot Studio agent invoked from a spike with a real user token.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Phase 1<span>~5 weeks</span></div>
+          <div class="ph-body"><h3>Catalog MVP</h3><p>Registry service and API, catalog UI with search and facets, agent detail pages, manual card authoring by the platform team, and Tier B deep-link handoff. No runtime yet — this phase is about making agents findable.</p></div>
+          <div class="ph-exit"><b>Exit criteria</b>100% of inventoried agents discoverable; a user can find and launch any declarative agent from the hub in under 30 seconds.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Phase 2<span>~6 weeks</span></div>
+          <div class="ph-body"><h3>Runtime</h3><p>Agent Gateway with the invocation contract, Entra OBO chain, Copilot Studio adapter with streaming, the config-driven org-hosted adapter, in-hub chat runner, transcripts and audit log.</p></div>
+          <div class="ph-exit"><b>Exit criteria</b>Three Tier A agents — at least one per invocable source — running inside the hub with full traces, cost attribution and an audit trail.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Phase 3<span>~4 weeks</span></div>
+          <div class="ph-body"><h3>Concierge</h3><p>Catalog index with hybrid retrieval, entitlement pre-filter, LLM re-ranker, structured recommendations with handoff, the labelled routing eval set in CI, feedback capture and gap mining. Ship it to Teams as well as the dashboard.</p></div>
+          <div class="ph-exit"><b>Exit criteria</b>Top-1 routing accuracy ≥ 85% on the labelled set; gap report generating automatically.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Phase 4<span>~6 weeks</span></div>
+          <div class="ph-body"><h3>Self-service</h3><p>Onboarding wizard, <code>agent.yaml</code> plus CI publishing, automated validation gates, the three-reviewer approval workflow, pilot visibility, owner dashboards, scheduled health checks and auto-flagging.</p></div>
+          <div class="ph-exit"><b>Exit criteria</b>A team outside the platform group publishes an agent end-to-end without platform help.</div>
+        </div>
+        <div class="phase">
+          <div class="ph-id">Phase 5<span>ongoing</span></div>
+          <div class="ph-body"><h3>Scale</h3><p>MCP and A2A federation, multi-agent chaining where the concierge delegates across agents, cost chargeback, tenant-inventory reconciliation with the Microsoft control plane, ratings and usage leaderboards, and a learned router trained on accumulated acceptance data.</p></div>
+          <div class="ph-exit"><b>Watch for</b>Catalog growth past ~40 agents is when routing quality and duplicate detection start to really matter.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section id="decisions">
+      <div class="sec-head"><span class="sec-num">13</span><h2>Decisions to make now</h2></div>
+      <p class="lede">Each of these changes the architecture rather than the implementation, so they're cheap this week and expensive in three months. My recommendation is in the right-hand column.</p>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Decision</th><th>Options</th><th>Recommendation</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="k">Where does the concierge live?</td>
+              <td>Dashboard only · Copilot Studio agent only · both</td>
+              <td>Build it <strong>as a Copilot Studio agent</strong> over your registry and gateway APIs, consumed by the dashboard through the gateway. One implementation, available in Teams where users already are.</td>
+            </tr>
+            <tr>
+              <td class="k">Agent builder vs Copilot Studio for new agents</td>
+              <td>Free choice · Studio by default · Studio mandatory for anything integrated</td>
+              <td><strong>Studio mandatory when API-callable</strong>; agent builder allowed for in-Copilot-only, business-maintained agents. Write it down and enforce it at intake.</td>
+            </tr>
+            <tr>
+              <td class="k">Registry vs Microsoft's tenant inventory</td>
+              <td>Build everything · consume Microsoft's · hybrid</td>
+              <td><strong>Hybrid.</strong> Your registry owns business metadata and routing; reconcile inventory and identity from the Microsoft control plane. Never duplicate identity governance.</td>
+            </tr>
+            <tr>
+              <td class="k">Where do entitlements live?</td>
+              <td>A <code>user_agent_access</code> table in your DB · Entra ID security groups · both</td>
+              <td><strong>Entra ID groups only</strong>, referenced by <code>access.entitlement_group</code> on the card — see §11. Expect pushback on "but a table is simpler"; the answer is that a table makes you the owner of joiner/mover/leaver, access reviews and attestation forever.</td>
+            </tr>
+            <tr>
+              <td class="k">Does the hub run conversations or just link out?</td>
+              <td>Catalog only · runtime for everything · tiered</td>
+              <td><strong>Tiered</strong>, per §1. Resist the temptation to iframe declarative agents into looking like Tier A — you'd inherit the support burden without the telemetry.</td>
+            </tr>
+            <tr>
+              <td class="k">Who owns conversation history?</td>
+              <td>Source of record · hub of record · hub transcript + source state</td>
+              <td><strong>Hub transcript for audit and evals, source keeps its own conversation state.</strong> Pass the native conversation id through; don't replay history.</td>
+            </tr>
+            <tr>
+              <td class="k">Cost model</td>
+              <td>Central budget · chargeback to teams · hybrid</td>
+              <td><strong>Central budget through Phase 3, chargeback from Phase 5.</strong> Instrument for chargeback from day one even if you don't bill — retrofitting cost attribution is painful.</td>
+            </tr>
+            <tr>
+              <td class="k">Default catalog visibility</td>
+              <td>Private by default · org-visible by default</td>
+              <td><strong>Org-visible by default</strong>, entitlement-gated for execution. Discovery is the whole point; a hub where most agents are hidden has no reason to exist.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 14 -->
+    <section id="risks">
+      <div class="sec-head"><span class="sec-num">14</span><h2>Risks</h2></div>
+
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td class="k">Catalog rot</td><td>High</td><td>Mandatory <code>review_due</code>, scheduled health checks and evals, auto-flag then auto-unlist. Owner handover task when a steward leaves. This is the most likely way the project quietly fails.</td></tr>
+            <tr><td class="k">Agent sprawl &amp; duplicates</td><td>High</td><td>Embedding-similarity duplicate detection at intake; a catalog steward role; monthly review of the gap and overlap reports with owners.</td></tr>
+            <tr><td class="k">Routing quality decay</td><td>High</td><td>Labelled eval set gated in CI; monitor "no match" and acceptance rates; require human-reviewed routing blocks at publish.</td></tr>
+            <tr><td class="k">Microsoft platform churn</td><td>Medium</td><td>Everything source-specific sits behind an adapter. Re-verify the Copilot Studio client surface and declarative-agent capabilities at the start of each phase — including whether app-only auth has arrived, which would unlock unattended invocation.</td></tr>
+            <tr><td class="k">Licensing &amp; capacity surprises</td><td>Medium</td><td>Model Copilot Studio message consumption and M365 Copilot seat coverage before Phase 2. Meter per agent and alert on burn rate; a single popular agent can consume a capacity pack fast.</td></tr>
+            <tr><td class="k">Sensitive data in transcripts</td><td>Medium</td><td>Redaction in the gateway pipeline, per-agent retention, classification-gated visibility, DLP in the loop, restricted access to transcript storage.</td></tr>
+            <tr><td class="k">Low adoption — "another portal"</td><td>Medium</td><td>Ship the concierge into Teams and Copilot, not only the dashboard. Seed the catalog with genuinely useful agents before launch. Measure search-to-session conversion, not page views.</td></tr>
+            <tr><td class="k">Org-hosted agents can't meet the contract</td><td>Medium</td><td>Accept it by design: the mapping-spec adapter absorbs the variance. Declare degraded capabilities honestly on the card (no streaming, no files) rather than faking them in the UI.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>Agent Hub · architecture draft v1</span>
+    <span>Microsoft capability notes verified Nov 2026 — re-check each phase</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  try{
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+    if(!links.length || !('IntersectionObserver' in window)) return;
+    var map = {};
+    links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(a){ a.classList.remove('on'); });
+          var a = map[e.target.id];
+          if(a) a.classList.add('on');
+        }
+      });
+    },{rootMargin:'-10% 0px -75% 0px'});
+    Object.keys(map).forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) io.observe(el);
+    });
+  }catch(err){}
+})();
+</script>
