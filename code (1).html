@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regression Prevention Plan – Future Releases</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --dark: #1e293b;
+    --gray: #64748b;
+    --bg: #f8fafc;
+    --green: #16a34a;
+    --green-light: #dcfce7;
+    --orange: #ea580c;
+    --orange-light: #ffedd5;
+    --red: #dc2626;
+    --red-light: #fee2e2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    margin: 0;
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 40px 60px 30px;
+  }
+  header h1 { margin: 0 0 8px; font-size: 28px; }
+  header p { margin: 0; opacity: 0.9; font-size: 15px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 30px 60px 60px; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 20px;
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary-light);
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+  }
+  h3 { font-size: 16px; margin: 0 0 8px; }
+  .problem-box {
+    background: var(--red-light);
+    border-left: 5px solid var(--red);
+    padding: 18px 22px;
+    border-radius: 6px;
+  }
+  .problem-box b { color: var(--red); }
+  .goal-box {
+    background: var(--green-light);
+    border-left: 5px solid var(--green);
+    padding: 18px 22px;
+    border-radius: 6px;
+    margin-top: 16px;
+  }
+  .goal-box b { color: var(--green); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+    vertical-align: top;
+  }
+  th { background: var(--primary); color: white; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .status-no { color: var(--red); font-weight: 600; }
+  .status-partial { color: var(--orange); font-weight: 600; }
+  .status-yes { color: var(--green); font-weight: 600; }
+  .step-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid var(--primary);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .step-card .num {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    width: 28px; height: 28px;
+    line-height: 28px;
+    text-align: center;
+    border-radius: 50%;
+    font-weight: 700;
+    margin-right: 8px;
+    font-size: 14px;
+  }
+  .step-card ul { margin: 8px 0; padding-left: 22px; font-size: 14px; }
+  .step-card li { margin-bottom: 4px; }
+  .why {
+    font-size: 13px;
+    background: var(--primary-light);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+  }
+  details {
+    margin-top: 10px;
+    background: #f1f5f9;
+    border-radius: 6px;
+    padding: 8px 12px;
+  }
+  summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--primary); }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  code { font-family: Consolas, 'Courier New', monospace; }
+  .inline-code {
+    background: #e2e8f0;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: Consolas, monospace;
+    font-size: 13px;
+  }
+  .phase-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .phase-card {
+    border-radius: 8px;
+    padding: 18px;
+    color: white;
+  }
+  .phase-card.p1 { background: var(--green); }
+  .phase-card.p2 { background: var(--orange); }
+  .phase-card.p3 { background: var(--primary); }
+  .phase-card h4 { margin: 0 0 2px; font-size: 16px; }
+  .phase-card .dur { font-size: 13px; opacity: 0.9; margin-bottom: 10px; }
+  .phase-card ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+  .phase-card li { margin-bottom: 4px; }
+  .ongoing {
+    margin-top: 16px;
+    background: white;
+    border: 2px dashed var(--primary);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 14px;
+  }
+  .next-steps {
+    background: var(--primary-light);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .next-steps ol { margin: 10px 0 0 20px; padding: 0; }
+  .next-steps li { margin-bottom: 8px; }
+  footer { text-align: center; padding: 20px; font-size: 12px; color: var(--gray); }
+  @media print {
+    details { display: none; }
+    header, th, .phase-card, .step-card .num {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+  @media (max-width: 800px) {
+    .container, header { padding-left: 20px; padding-right: 20px; }
+    .phase-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Regression Prevention Plan – Future Releases</h1>
+  <p>Web Application &nbsp;|&nbsp; Frontend: React 19 &nbsp;|&nbsp; Backend: .NET 8 API &nbsp;|&nbsp; GitLab (Repo, Work Items, CI/CD) &nbsp;|&nbsp; Free / Open-Source Tools Only</p>
+</header>
+
+<div class="container">
+
+  <!-- 1. Problem -->
+  <section>
+    <h2>1. Problem Statement</h2>
+    <div class="problem-box">
+      <b>Issue:</b> When a new release goes out, some existing functionality from earlier releases breaks.
+      QA usually finds these regressions late. Recent examples: a <b>UI popup</b> behaved incorrectly and a
+      <b>backend condition</b> was wrong. Both were caused by new code changes, and it is hard to trace which change caused which issue.
+    </div>
+    <div class="goal-box">
+      <b>Goal:</b> Prevent regressions <u>before</u> release, and make it quick to trace any regression to the exact change and ticket that caused it.
+    </div>
+  </section>
+
+  <!-- 2. Current state -->
+  <section>
+    <h2>2. Current State vs. Gap</h2>
+    <table>
+      <tr><th>Area</th><th>Current State</th><th>Status</th><th>Gap / Risk</th></tr>
+      <tr><td>Branching</td><td>Feature → Main → Release branches in GitLab</td><td class="status-yes">In place</td><td>No release tags, so it's hard to compare releases</td></tr>
+      <tr><td>CI/CD</td><td>GitLab CI/CD pipeline (YAML)</td><td class="status-yes">In place</td><td>No quality gates blocking risky merges</td></tr>
+      <tr><td>Unit tests</td><td>Exist, but coverage is partial</td><td class="status-partial">Partial</td><td>Changes to untested shared code go unverified</td></tr>
+      <tr><td>Regression testing</td><td>Mostly manual by QA</td><td class="status-no">Manual</td><td>Slow, doesn't scale, easy to miss cases</td></tr>
+      <tr><td>Traceability</td><td>Work items exist but aren't linked to commits/MRs</td><td class="status-no">Missing</td><td>Can't tell which change caused a regression</td></tr>
+      <tr><td>Code review</td><td>Manual peer review before merge</td><td class="status-partial">Partial</td><td>No structured impact assessment</td></tr>
+      <tr><td>Environments</td><td>No environment matching production</td><td class="status-no">Missing</td><td>Issues found late or after release</td></tr>
+    </table>
+  </section>
+
+  <!-- 3. Overview -->
+  <section>
+    <h2>3. Plan Overview</h2>
+    <table>
+      <tr><th>#</th><th>Area</th><th>What It Solves</th><th>Tools (Free / OSS)</th></tr>
+      <tr><td>1</td><td>Traceability</td><td>Shows which ticket and MR caused a change</td><td>GitLab MR templates, CI check</td></tr>
+      <tr><td>2</td><td>Release tagging &amp; staging</td><td>Shows exactly what's in each release</td><td>Git tags, GitLab Environments</td></tr>
+      <tr><td>3</td><td>Automated regression tests</td><td>Catches broken old features automatically</td><td>xUnit, Vitest, React Testing Library, Playwright</td></tr>
+      <tr><td>4</td><td>Coverage on new code</td><td>Makes sure every new change is tested</td><td>Coverlet, diff-cover</td></tr>
+      <tr><td>5</td><td>Impact analysis</td><td>Shows what old code a change can affect</td><td>dependency-cruiser, Vitest related, oasdiff</td></tr>
+      <tr><td>6</td><td>Pipeline quality gates</td><td>Stops risky code from being merged</td><td>GitLab CI, SonarQube Community</td></tr>
+      <tr><td>7</td><td>Safer releases</td><td>Switch off a risky feature without redeploying</td><td>Microsoft.FeatureManagement, Unleash</td></tr>
+    </table>
+  </section>
+
+  <!-- 4. Details -->
+  <section>
+    <h2>4. Solution Details</h2>
+
+    <!-- Step 1 -->
+    <div class="step-card">
+      <h3><span class="num">1</span>Link Every Change to a Ticket</h3>
+      <ul>
+        <li><b>Branch naming:</b> <span class="inline-code">feature/123-popup-validation</span>, where 123 is the work item ID</li>
+        <li><b>MR template:</b> every MR must state the ticket, what changed, <b>which existing features could be affected</b>, and the regression risk</li>
+        <li><b>CI check:</b> the pipeline fails if the MR doesn't reference a ticket</li>
+      </ul>
+      <div class="why"><b>Why:</b> The "Areas that could be affected" field makes developers think about impact on old features <i>before</i> merging.</div>
+      <details>
+        <summary>View MR template (.gitlab/merge_request_templates/Default.md)</summary>
+<pre><code>## Related ticket
+Closes #&#60;ticket-id&#62;
+
+## What changed
+-
+
+## Areas that could be affected (existing features)
+-
+
+## Regression risk: Low / Medium / High
+
+## Checklist
+- [ ] Unit tests added/updated
+- [ ] Existing features touched by this change were tested
+- [ ] API contract changes communicated to frontend</code></pre>
+      </details>
+      <details>
+        <summary>View CI ticket-link check (.gitlab-ci.yml)</summary>
+<pre><code>check-ticket-link:
+  stage: .pre
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - echo "$CI_MERGE_REQUEST_DESCRIPTION" | grep -Eq "#[0-9]+" || (echo "MR must reference a ticket" &amp;&amp; exit 1)</code></pre>
+      </details>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+      <h3><span class="num">2</span>Tag Releases &amp; Add a Staging Environment</h3>
+      <ul>
+        <li><b>Tag every release</b> from the release branch (<span class="inline-code">v1.4.0</span>, <span class="inline-code">v1.5.0</span>, ...)</li>
+        <li>List everything that went into a release with one command, which gives a <b>ticket list per release</b></li>
+        <li><b>Staging / QA environment:</b> deploy each release candidate there before production, using config and data close to production</li>
+        <li>When something breaks, <span class="inline-code">git bisect</span> between two tags finds the exact commit quickly</li>
+      </ul>
+      <details>
+        <summary>View commands</summary>
+<pre><code># What changed between two releases
+git log v1.4.0..v1.5.0 --oneline --merges
+
+# Find the exact commit that introduced a bug
+git bisect start v1.5.0 v1.4.0</code></pre>
+      </details>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+      <h3><span class="num">3</span>Build an Automated Regression Suite (Start Small)</h3>
+      <ul>
+        <li><b>Key rule: every bug QA finds gets an automated test before the ticket is closed</b>, so the same regression can't come back</li>
+        <li>Start with the most critical flows, not full coverage</li>
+      </ul>
+      <table style="margin-top:10px;">
+        <tr><th>Layer</th><th>Tool</th><th>Start With</th></tr>
+        <tr><td>Backend unit</td><td>xUnit (+ Moq / NSubstitute)</td><td>Business rules and conditions</td></tr>
+        <tr><td>Backend API integration</td><td>WebApplicationFactory + Testcontainers</td><td>Main endpoints</td></tr>
+        <tr><td>Frontend component</td><td>Vitest + React Testing Library</td><td>Popups, forms, validations</td></tr>
+        <tr><td>End-to-end</td><td><b>Playwright</b></td><td>10–20 critical user flows</td></tr>
+      </table>
+      <div class="why"><b>Highest value:</b> Playwright end-to-end tests replace a large part of QA's current manual regression testing.</div>
+      <details>
+        <summary>Example: backend condition bug test (xUnit)</summary>
+<pre><code>[Theory]
+[InlineData(0, false)]
+[InlineData(1, true)]
+[InlineData(100, true)]
+[InlineData(-1, false)]
+public void IsEligible_ReturnsExpectedResult(int value, bool expected)
+{
+    var service = new EligibilityService();
+    Assert.Equal(expected, service.IsEligible(value));
+}</code></pre>
+      </details>
+      <details>
+        <summary>Example: UI popup bug test (Vitest + React Testing Library)</summary>
+<pre><code>test('shows confirmation popup when delete is clicked', async () =&#62; {
+  render(&#60;UserList /&#62;);
+  await userEvent.click(screen.getByRole('button', { name: /delete/i }));
+  expect(screen.getByRole('dialog')).toBeVisible();
+  expect(screen.getByText(/are you sure/i)).toBeInTheDocument();
+});</code></pre>
+      </details>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+      <h3><span class="num">4</span>Require Coverage on New Code Only</h3>
+      <ul>
+        <li>Raising coverage for the whole codebase is slow. Instead, <b>require tests for the lines each MR changes</b></li>
+        <li><b>Backend:</b> Coverlet (built into the xUnit template) produces coverage reports</li>
+        <li><b>Frontend:</b> Vitest with the Cobertura reporter</li>
+        <li><b>diff-cover</b> fails the MR if changed lines are below the threshold (for example 80%)</li>
+        <li>GitLab shows covered and uncovered lines directly in the MR diff for reviewers</li>
+      </ul>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-card">
+      <h3><span class="num">5</span>Impact Analysis: What Can This Change Break?</h3>
+      <ul>
+        <li><b>Frontend:</b> <span class="inline-code">dependency-cruiser</span> / <span class="inline-code">madge</span> show which components use a changed file; <span class="inline-code">vitest related</span> runs only the affected tests</li>
+        <li><b>Backend:</b> keep shared logic in clear projects and services, and run the full test suite on every MR</li>
+        <li><b>API contract:</b> generate the Swagger/OpenAPI file during the build and compare it with <span class="inline-code">main</span> using <b>oasdiff</b>. The pipeline fails if a field is removed or renamed or its type changes</li>
+        <li><b>Optional:</b> generate TypeScript API types from Swagger (openapi-typescript / NSwag), so backend contract changes cause frontend <b>compile errors</b> instead of runtime bugs</li>
+      </ul>
+      <div class="why"><b>Why:</b> The popup and condition bugs most likely came from changing shared code without knowing what else depended on it.</div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-card">
+      <h3><span class="num">6</span>Pipeline Quality Gates</h3>
+      <ul>
+        <li>Run backend tests, frontend tests, diff coverage, and Playwright E2E tests in GitLab CI</li>
+        <li>Turn on <b>"Pipelines must succeed"</b> in MR settings so failing MRs can't be merged</li>
+        <li>Optional static analysis: <b>SonarQube Community</b>, strict ESLint + TypeScript, .NET Roslyn analyzers</li>
+        <li>Note: some features (required approvals, Code Owners) depend on the GitLab tier</li>
+      </ul>
+      <details>
+        <summary>View example pipeline (.gitlab-ci.yml)</summary>
+<pre><code>stages: [.pre, build, test, quality, e2e]
+
+variables:
+  GIT_DEPTH: 0
+
+backend-test:
+  stage: test
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script:
+    - dotnet test ./backend --collect:"XPlat Code Coverage" --results-directory ./coverage
+  artifacts:
+    paths: [coverage/]
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/**/coverage.cobertura.xml
+
+frontend-test:
+  stage: test
+  image: node:20
+  script:
+    - cd frontend
+    - npm ci
+    - npx vitest run --coverage
+  artifacts:
+    paths: [frontend/coverage/]
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+
+diff-coverage:
+  stage: quality
+  image: python:3.12
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - pip install diff-cover
+    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    - diff-cover coverage/**/coverage.cobertura.xml frontend/coverage/cobertura-coverage.xml --compare-branch=origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME --fail-under=80
+
+e2e-regression:
+  stage: e2e
+  image: mcr.microsoft.com/playwright:v1.48.0-jammy  # match your Playwright npm version
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^release/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - cd e2e
+    - npm ci
+    - npx playwright test
+  artifacts:
+    when: always
+    paths: [e2e/playwright-report/]</code></pre>
+      </details>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="step-card">
+      <h3><span class="num">7</span>Feature Flags for Risky Changes</h3>
+      <ul>
+        <li>Put risky changes to existing features behind a flag, so they can be <b>switched off in production without a new release</b></li>
+        <li><b>Backend:</b> Microsoft.FeatureManagement (free, from Microsoft)</li>
+        <li><b>Frontend + backend:</b> Unleash (open source; GitLab's Feature Flags feature is built on it)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5. Rollout -->
+  <section>
+    <h2>5. Suggested Rollout</h2>
+    <div class="phase-grid">
+      <div class="phase-card p1">
+        <h4>Phase 1: Quick Wins</h4>
+        <div class="dur">1–2 weeks</div>
+        <ul>
+          <li>MR template</li>
+          <li>Ticket-link CI check</li>
+          <li>Branch naming convention</li>
+          <li>Release tags</li>
+          <li>"Bug = new test" rule</li>
+        </ul>
+      </div>
+      <div class="phase-card p2">
+        <h4>Phase 2: Safety Net</h4>
+        <div class="dur">3–6 weeks</div>
+        <ul>
+          <li>Coverage reports in MRs</li>
+          <li>diff-cover gate</li>
+          <li>Playwright for top 10 critical flows</li>
+          <li>"Pipelines must succeed" enabled</li>
+        </ul>
+      </div>
+      <div class="phase-card p3">
+        <h4>Phase 3: Deeper Checks</h4>
+        <div class="dur">2–3 months</div>
+        <ul>
+          <li>API contract checks (oasdiff)</li>
+          <li>Integration tests (Testcontainers)</li>
+          <li>Staging environment</li>
+          <li>Feature flags</li>
+        </ul>
+      </div>
+    </div>
+    <div class="ongoing">
+      <b>Ongoing:</b> Tag each regression with the MR that caused it, and review monthly to find weak areas of the codebase.
+    </div>
+  </section>
+
+  <!-- 6. Metrics -->
+  <section>
+    <h2>6. How We Measure Success</h2>
+    <table>
+      <tr><th>Metric</th><th>Why It Matters</th></tr>
+      <tr><td>Number of regressions per release</td><td>Main indicator that the plan is working</td></tr>
+      <tr><td>Regressions caught before release vs. after</td><td>Shows whether problems are found earlier</td></tr>
+      <tr><td>Diff coverage per MR</td><td>Shows that new changes are being tested</td></tr>
+      <tr><td>Time to trace a regression to its cause</td><td>Shows traceability is improving (target: minutes, not hours)</td></tr>
+      <tr><td>Manual regression testing effort per release</td><td>Shows automation is reducing QA workload</td></tr>
+    </table>
+  </section>
+
+  <!-- 7. Next Steps -->
+  <section>
+    <h2>7. Next Steps – Decisions Needed</h2>
+    <div class="next-steps">
+      <p><b>Requesting approval / input on:</b></p>
+      <ol>
+        <li>Approve <b>Phase 1 quick wins</b>. Low effort, and the team can start in the current sprint.</li>
+        <li>Agree on the <b>"every bug gets a test"</b> rule as part of the team's Definition of Done.</li>
+        <li>Identify the <b>top 10–20 critical user flows</b> with QA for the Playwright suite.</li>
+        <li>Allocate capacity per sprint (for example 10–15%) for test automation and pipeline improvements.</li>
+        <li>Discuss setting up a <b>staging environment</b> that matches production.</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Prepared for Scrum Master Review &nbsp;|&nbsp; Regression Prevention – Future Releases &nbsp;|&nbsp; All tools listed are free / open-source
+</footer>
+
+</body>
+</html>

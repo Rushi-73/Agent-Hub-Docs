@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Regression Prevention & Detection Plan</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --dark: #1e293b;
+    --gray: #64748b;
+    --bg: #f8fafc;
+    --green: #16a34a;
+    --green-light: #dcfce7;
+    --orange: #ea580c;
+    --orange-light: #ffedd5;
+    --red: #dc2626;
+    --red-light: #fee2e2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: white;
+    padding: 40px 60px 30px;
+  }
+  header h1 { margin: 0 0 8px; font-size: 28px; }
+  header p { margin: 0; opacity: 0.9; font-size: 15px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 30px 60px 60px; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 20px;
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary-light);
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+  }
+  h3 { font-size: 16px; color: var(--dark); margin-top: 20px; }
+  .problem-box {
+    background: var(--red-light);
+    border-left: 5px solid var(--red);
+    padding: 18px 22px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .problem-box b { color: var(--red); }
+  .cause-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .cause-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .cause-card .tag {
+    display: inline-block;
+    background: var(--orange-light);
+    color: var(--orange);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+  }
+  th { background: var(--primary); color: white; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 10px;
+  }
+  .badge.low { background: var(--green-light); color: var(--green); }
+  .badge.med { background: var(--orange-light); color: var(--orange); }
+  .badge.high { background: var(--red-light); color: var(--red); }
+  .phase-banner {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .phase-banner .phase {
+    flex: 1;
+    padding: 18px;
+    border-radius: 8px;
+    color: white;
+    text-align: center;
+  }
+  .phase-banner .phase.now { background: var(--orange); }
+  .phase-banner .phase.future { background: var(--primary); }
+  .phase-banner .phase h4 { margin: 0 0 4px; font-size: 15px; }
+  .phase-banner .phase p { margin: 0; font-size: 13px; opacity: 0.9; }
+  .timeline {
+    position: relative;
+    margin-top: 24px;
+    padding-left: 30px;
+    border-left: 3px solid var(--primary-light);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 26px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -39px;
+    top: 4px;
+    width: 14px;
+    height: 14px;
+    background: var(--primary);
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+  .timeline-item h4 { margin: 0 0 4px; color: var(--primary); font-size: 15px; }
+  .timeline-item p { margin: 0; font-size: 14px; color: var(--gray); }
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .tool-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+  .tool-card b { display: block; color: var(--primary); margin-bottom: 4px; font-size: 14px; }
+  .tool-card span.free { color: var(--green); font-weight: 600; font-size: 12px; }
+  .next-steps {
+    background: var(--primary-light);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .next-steps ol { margin: 10px 0 0 20px; padding: 0; }
+  .next-steps li { margin-bottom: 8px; }
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: var(--gray);
+  }
+  @media print {
+    body { background: white; }
+    header { background: #1e3a8a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Regression Prevention &amp; Detection Plan</h1>
+  <p>Web Application &nbsp;|&nbsp; Frontend: React 19 &nbsp;|&nbsp; Backend: .NET 8 API &nbsp;|&nbsp; GitLab CI/CD</p>
+</header>
+
+<div class="container">
+
+  <section>
+    <h2>1. Problem Statement</h2>
+    <div class="problem-box">
+      <b>Issue:</b> After new releases, some functionality from previous releases breaks unexpectedly.
+      Recent examples caught by QA: a UI popup stopped working correctly, and a wrong condition in
+      the backend affected existing behavior. The root cause of each regression is hard to trace back
+      to a specific change.
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Why This Is Happening</h2>
+    <div class="cause-grid">
+      <div class="cause-card">
+        <span class="tag">Process</span>
+        <p>Commits and merge requests are not linked to work item tickets, so it's hard to trace which change caused an issue.</p>
+      </div>
+      <div class="cause-card">
+        <span class="tag">Process</span>
+        <p>Regression testing is fully manual — not scalable and prone to missed cases as the product grows.</p>
+      </div>
+      <div class="cause-card">
+        <span class="tag">Testing</span>
+        <p>No regression test suite exists. Unit test coverage is partial, so changes to shared code go unverified.</p>
+      </div>
+      <div class="cause-card">
+        <span class="tag">Environment</span>
+        <p>No environment that mirrors production, so issues are often found late, close to or after release.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Two-Part Approach</h2>
+    <div class="phase-banner">
+      <div class="phase now">
+        <h4>Part A — Immediate / Already Built Code</h4>
+        <p>Catch existing regressions without rewriting tests from scratch</p>
+      </div>
+      <div class="phase future">
+        <h4>Part B — Going Forward</h4>
+        <p>Prevent regressions in all future releases</p>
+      </div>
+    </div>
+
+    <h3>Part A: Low-Effort Ways to Verify Already-Built Code</h3>
+    <table>
+      <tr><th>Technique</th><th>What It Catches</th><th>Effort</th><th>Tool (Free / OSS)</th></tr>
+      <tr><td>API response comparison (old vs. new release)</td><td>Backend logic / condition bugs</td><td><span class="badge low">Very Low</span></td><td>Keploy, GoReplay, Postman + Newman</td></tr>
+      <tr><td>Visual (screenshot) comparison</td><td>UI / popup / layout bugs</td><td><span class="badge low">Low</span></td><td>Playwright, BackstopJS</td></tr>
+      <tr><td>Record QA's manual clicks once, replay automatically</td><td>Broken user flows</td><td><span class="badge low">Low (one-time)</span></td><td>Playwright Codegen</td></tr>
+      <tr><td>Change impact report between release tags</td><td>Shows exactly what to retest</td><td><span class="badge low">Very Low</span></td><td>git diff, dependency-cruiser</td></tr>
+      <tr><td>API contract diff</td><td>Breaking changes between frontend &amp; backend</td><td><span class="badge low">None</span></td><td>oasdiff</td></tr>
+      <tr><td>Static code analysis</td><td>Risky code, logic mistakes</td><td><span class="badge low">None</span></td><td>SonarQube Community, ESLint, Roslyn Analyzers</td></tr>
+    </table>
+
+    <h3>Part B: Preventing Regressions in Future Releases</h3>
+    <table>
+      <tr><th>Area</th><th>Solution</th><th>Tool (Free / OSS)</th></tr>
+      <tr><td>Traceability</td><td>Link every commit/MR to a ticket; MR template with impact section</td><td>GitLab templates, CI check</td></tr>
+      <tr><td>Release tracking</td><td>Tag every release; staging environment before production</td><td>Git tags, GitLab Environments</td></tr>
+      <tr><td>Automated regression suite</td><td>Add a test for every bug QA finds; build critical flow tests</td><td>xUnit, Vitest, Playwright</td></tr>
+      <tr><td>Coverage on new code</td><td>Require coverage only on changed lines per MR</td><td>Coverlet, diff-cover</td></tr>
+      <tr><td>Impact analysis</td><td>Detect what old code a change can affect</td><td>dependency-cruiser, oasdiff</td></tr>
+      <tr><td>Pipeline quality gates</td><td>Block merge if tests/coverage/contract checks fail</td><td>GitLab CI, SonarQube</td></tr>
+      <tr><td>Safer rollout</td><td>Toggle risky features off without a new release</td><td>Microsoft.FeatureManagement, Unleash</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>4. Rollout Timeline</h2>
+    <div class="timeline">
+      <div class="timeline-item">
+        <h4>Immediate (This Sprint)</h4>
+        <p>Change-impact report between last two release tags + API contract diff (oasdiff). No test writing needed — shows exactly where the risk is.</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Week 1–2</h4>
+        <p>Set up old-vs-new API response comparison for backend; start screenshot comparison for key UI screens and popups.</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Week 2–4</h4>
+        <p>Introduce MR template with ticket linking + impact section; enable "pipeline must pass" before merge.</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Month 1–2</h4>
+        <p>Build Playwright regression suite for top 10–20 critical flows (using QA's recorded sessions as a starting point).</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Month 2–3</h4>
+        <p>Add diff-coverage gate in CI, staging environment matching production, and feature flags for risky changes.</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Ongoing</h4>
+        <p>Rule: every bug found by QA gets an automated test added before closing, so it can't silently reappear.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>5. Key Tools (All Free / Open Source)</h2>
+    <div class="tools-grid">
+      <div class="tool-card"><b>Keploy</b>Records real traffic and replays it against new releases to catch backend regressions.<br><span class="free">Open Source</span></div>
+      <div class="tool-card"><b>Playwright</b>End-to-end testing + visual screenshot comparison for the React frontend.<br><span class="free">Open Source</span></div>
+      <div class="tool-card"><b>oasdiff</b>Detects breaking changes in the API contract between backend and frontend.<br><span class="free">Open Source</span></div>
+      <div class="tool-card"><b>dependency-cruiser</b>Shows which components/files are impacted by a change.<br><span class="free">Open Source</span></div>
+      <div class="tool-card"><b>SonarQube Community</b>Static analysis to catch risky code before merge.<br><span class="free">Free Edition</span></div>
+      <div class="tool-card"><b>diff-cover</b>Enforces test coverage only on changed lines in each MR.<br><span class="free">Open Source</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>6. Expected Outcome</h2>
+    <table>
+      <tr><th>Metric</th><th>Before</th><th>Target</th></tr>
+      <tr><td>Regressions found by QA vs. production</td><td>Mostly after release</td><td>Mostly before release</td></tr>
+      <tr><td>Time to trace root cause of a regression</td><td>Hours to days (manual)</td><td>Minutes (via release tags + impact report)</td></tr>
+      <tr><td>Manual regression testing effort</td><td>High, every release</td><td>Reduced via automated replay &amp; visual comparison</td></tr>
+      <tr><td>Repeat regressions (same bug reappears)</td><td>Possible</td><td>Prevented (test added per bug fixed)</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>7. Next Steps — Decision Needed</h2>
+    <div class="next-steps">
+      <p><b>Requesting approval / input on:</b></p>
+      <ol>
+        <li>Start with <b>Part A (immediate)</b> — set up API comparison + visual comparison for the current release without blocking ongoing development.</li>
+        <li>Allocate time for <b>MR template + ticket linking</b> rollout — low effort, immediate traceability benefit.</li>
+        <li>Identify <b>top 10–15 critical user flows</b> to prioritize for the Playwright regression suite.</li>
+        <li>Confirm budget constraint (open-source preferred) — all tools proposed above are free.</li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Prepared for Scrum Master Review &nbsp;|&nbsp; Generated via CodeMie &nbsp;|&nbsp; All tools listed are free / open-source
+</footer>
+
+</body>
+</html>
