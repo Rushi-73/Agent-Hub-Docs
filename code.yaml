@@ -1,0 +1,156 @@
+# azure-pipelines.yml
+trigger: none
+
+parameters:
+- name: targetEnvironment
+  displayName: Environment to configure
+  type: string
+  default: DEV
+  values:
+  - DEV
+  - PREPROD
+  - PROD
+
+- name: resourceGroup
+  displayName: Managed Instance resource group
+  type: string
+  default: "REPLACE_WITH_MI_RESOURCE_GROUP"
+
+- name: managedInstanceName
+  displayName: Managed Instance name
+  type: string
+  default: "REPLACE_WITH_MI_NAME"
+
+- name: storageAccountName
+  displayName: Existing storage account name
+  type: string
+  default: "REPLACE_WITH_EXISTING_STORAGE_ACCOUNT_NAME"
+
+- name: notificationEmail
+  type: string
+  default: "secops@example.com"
+
+variables:
+- ${{ if eq(parameters.targetEnvironment, 'DEV') }}:
+  - name: azureServiceConnection
+    value: sc-azure-dev
+- ${{ if eq(parameters.targetEnvironment, 'PREPROD') }}:
+  - name: azureServiceConnection
+    value: sc-azure-preprod
+- ${{ if eq(parameters.targetEnvironment, 'PROD') }}:
+  - name: azureServiceConnection
+    value: sc-azure-prod
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: ConfigureVA
+  displayName: "Configure VA - ${{ parameters.targetEnvironment }}"
+  jobs:
+  - deployment: ConfigureManagedInstance
+    environment: sqlmi-va-${{ parameters.targetEnvironment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzurePowerShell@5
+            displayName: Enable VA and verify scan
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              ScriptType: InlineScript
+              azurePowerShellVersion: LatestVersion
+              pwsh: true
+              Inline: |
+                $ErrorActionPreference = 'Stop'
+
+                $rg        = $env:MI_RG
+                $miName    = $env:MI_NAME
+                $storage   = $env:STORAGE_NAME
+                $container = 'vulnerability-assessment'
+
+                $mi = Get-AzSqlInstance -ResourceGroupName $rg -Name $miName
+                if (-not $mi) {
+                  throw "Managed instance not found: $rg/$miName"
+                }
+
+                # Defender for Azure SQL plan; this setting is subscription-wide.
+                Set-AzSecurityPricing -Name SqlServers -PricingTier Standard | Out-Null
+                $plan = Get-AzSecurityPricing -Name SqlServers
+                if ($plan.PricingTier -ne 'Standard') {
+                  throw "Defender SqlServers plan is not Standard."
+                }
+
+                # Avoid automatic creation of a new storage account.
+                Enable-AzSqlInstanceAdvancedDataSecurity `
+                  -ResourceGroupName $rg `
+                  -InstanceName $miName `
+                  -DoNotConfigureVulnerabilityAssessment | Out-Null
+
+                # Configure weekly classic VA using the existing storage account.
+                Update-AzSqlInstanceVulnerabilityAssessmentSetting `
+                  -ResourceGroupName $rg `
+                  -InstanceName $miName `
+                  -StorageAccountName $storage `
+                  -ScanResultsContainerName $container `
+                  -RecurringScansInterval Weekly `
+                  -EmailAdmins $false `
+                  -NotificationEmail @($env:NOTIFY_EMAIL) | Out-Null
+
+                $va = Get-AzSqlInstanceVulnerabilityAssessmentSetting `
+                  -ResourceGroupName $rg `
+                  -InstanceName $miName
+
+                if ($va.StorageAccountName -ne $storage -or
+                    $va.ScanResultsContainerName -ne $container -or
+                    "$($va.RecurringScansInterval)" -ne 'Weekly') {
+                  throw "VA settings verification failed for $rg/$miName."
+                }
+
+                $dbs = @(Get-AzSqlInstanceDatabase `
+                  -ResourceGroupName $rg `
+                  -InstanceName $miName |
+                  Where-Object { $_.Name -ne 'master' })
+
+                if ($dbs.Count -eq 0) {
+                  Write-Warning 'No databases found; configuration is verified, but no scan was run.'
+                }
+
+                foreach ($db in $dbs) {
+                  $scanId = 'pipeline-' + [guid]::NewGuid().ToString('N')
+
+                  Start-AzSqlInstanceDatabaseVulnerabilityAssessmentScan `
+                    -ResourceGroupName $rg `
+                    -InstanceName $miName `
+                    -DatabaseName $db.Name `
+                    -ScanId $scanId | Out-Null
+
+                  $record = $null
+                  for ($attempt = 1; $attempt -le 30; $attempt++) {
+                    Start-Sleep -Seconds 20
+
+                    $record = Get-AzSqlInstanceDatabaseVulnerabilityAssessmentScanRecord `
+                      -ResourceGroupName $rg `
+                      -InstanceName $miName `
+                      -DatabaseName $db.Name `
+                      -ScanId $scanId `
+                      -ErrorAction SilentlyContinue
+
+                    if ("$($record.State)" -in @('Passed', 'Failed', 'Fail')) {
+                      break
+                    }
+                  }
+
+                  if ("$($record.State)" -ne 'Passed') {
+                    throw "Scan not confirmed for $($db.Name). State=$($record.State); scanId=$scanId"
+                  }
+
+                  Write-Host "Verified scan for $($db.Name); scanId=$scanId"
+                }
+
+                Write-Host "Defender plan and weekly VA verified for $rg/$miName."
+            env:
+              MI_RG: ${{ parameters.resourceGroup }}
+              MI_NAME: ${{ parameters.managedInstanceName }}
+              STORAGE_NAME: ${{ parameters.storageAccountName }}
+              NOTIFY_EMAIL: ${{ parameters.notificationEmail }}
