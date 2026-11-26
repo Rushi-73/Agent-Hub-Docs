@@ -1,156 +1,200 @@
-# azure-pipelines.yml
+# azure-pipelines-defender-sql.yml
+# 1) Turns ON "Azure SQL Databases" (Microsoft.Security/pricings/SqlServers) for the subscription.
+# 2) OPTIONAL: turns ON express vulnerability assessment on one managed instance.
+# SAFETY: only GET/PUT; PUT allowed only to those two Microsoft.Security settings;
+#         no access to databases; dry run is the default; skips anything already on.
+# Auth: Azure access token in the secret variable AZURE_ACCESS_TOKEN (settable at queue time).
 trigger: none
 
 parameters:
 - name: targetEnvironment
-  displayName: Environment to configure
+  displayName: Environment
   type: string
-  default: DEV
-  values:
-  - DEV
-  - PREPROD
-  - PROD
+  default: PREPROD
+  values: [DEV, TEST, PREPROD, PROD]
+
+- name: subscriptionId
+  displayName: Subscription ID
+  type: string
+  default: "REPLACE_WITH_SUBSCRIPTION_ID"
+
+- name: expectedSubscriptionName
+  displayName: Expected subscription name (safety check, blank = skip)
+  type: string
+  default: "ba-ise-at33658-nch-preprod"
+
+- name: enableSqlPlan
+  displayName: Turn ON "Azure SQL Databases" Defender plan
+  type: boolean
+  default: true
+
+- name: enableExpressVA
+  displayName: Also enable express vulnerability assessment on the managed instance
+  type: boolean
+  default: false
 
 - name: resourceGroup
-  displayName: Managed Instance resource group
+  displayName: Managed Instance resource group (only needed for express VA)
   type: string
   default: "REPLACE_WITH_MI_RESOURCE_GROUP"
 
 - name: managedInstanceName
-  displayName: Managed Instance name
+  displayName: Managed Instance name (only needed for express VA)
   type: string
   default: "REPLACE_WITH_MI_NAME"
 
-- name: storageAccountName
-  displayName: Existing storage account name
-  type: string
-  default: "REPLACE_WITH_EXISTING_STORAGE_ACCOUNT_NAME"
-
-- name: notificationEmail
-  type: string
-  default: "secops@example.com"
-
-variables:
-- ${{ if eq(parameters.targetEnvironment, 'DEV') }}:
-  - name: azureServiceConnection
-    value: sc-azure-dev
-- ${{ if eq(parameters.targetEnvironment, 'PREPROD') }}:
-  - name: azureServiceConnection
-    value: sc-azure-preprod
-- ${{ if eq(parameters.targetEnvironment, 'PROD') }}:
-  - name: azureServiceConnection
-    value: sc-azure-prod
+- name: dryRun
+  displayName: Dry run (read and report only, change nothing)
+  type: boolean
+  default: true
 
 pool:
   vmImage: ubuntu-latest
 
 stages:
-- stage: ConfigureVA
-  displayName: "Configure VA - ${{ parameters.targetEnvironment }}"
+- stage: DefenderSql
+  displayName: "Defender SQL - ${{ parameters.targetEnvironment }}"
   jobs:
-  - deployment: ConfigureManagedInstance
-    environment: sqlmi-va-${{ parameters.targetEnvironment }}
+  - deployment: ConfigureDefenderSql
+    displayName: "Configure Defender for SQL"
+    environment: defender-sql-${{ parameters.targetEnvironment }}
+    timeoutInMinutes: 15
     strategy:
       runOnce:
         deploy:
           steps:
-          - task: AzurePowerShell@5
-            displayName: Enable VA and verify scan
+          - checkout: none
+          - task: PowerShell@2
+            displayName: "Enable Azure SQL Databases plan (+ optional express VA)"
             inputs:
-              azureSubscription: $(azureServiceConnection)
-              ScriptType: InlineScript
-              azurePowerShellVersion: LatestVersion
+              targetType: inline
               pwsh: true
-              Inline: |
+              script: |
                 $ErrorActionPreference = 'Stop'
 
-                $rg        = $env:MI_RG
-                $miName    = $env:MI_NAME
-                $storage   = $env:STORAGE_NAME
-                $container = 'vulnerability-assessment'
+                # Fail-safe: anything other than an explicit 'False' is a dry run
+                $dryRun = $env:DRY_RUN -ne 'False'
+                if ($dryRun) { Write-Host "*** DRY RUN: nothing will be changed ***" }
 
-                $mi = Get-AzSqlInstance -ResourceGroupName $rg -Name $miName
-                if (-not $mi) {
-                  throw "Managed instance not found: $rg/$miName"
+                $token = $env:AZ_TOKEN
+                if ([string]::IsNullOrWhiteSpace($token) -or $token -like '$(*') {
+                  throw "AZURE_ACCESS_TOKEN is empty. Paste a fresh token when you run the pipeline."
                 }
-
-                # Defender for Azure SQL plan; this setting is subscription-wide.
-                Set-AzSecurityPricing -Name SqlServers -PricingTier Standard | Out-Null
-                $plan = Get-AzSecurityPricing -Name SqlServers
-                if ($plan.PricingTier -ne 'Standard') {
-                  throw "Defender SqlServers plan is not Standard."
+                $sub = $env:SUB_ID
+                if ([string]::IsNullOrWhiteSpace($sub) -or $sub -like 'REPLACE_*') {
+                  throw "Set the subscriptionId parameter."
                 }
+                $headers = @{ Authorization = "Bearer $token" }
+                $arm = 'https://management.azure.com'
 
-                # Avoid automatic creation of a new storage account.
-                Enable-AzSqlInstanceAdvancedDataSecurity `
-                  -ResourceGroupName $rg `
-                  -InstanceName $miName `
-                  -DoNotConfigureVulnerabilityAssessment | Out-Null
-
-                # Configure weekly classic VA using the existing storage account.
-                Update-AzSqlInstanceVulnerabilityAssessmentSetting `
-                  -ResourceGroupName $rg `
-                  -InstanceName $miName `
-                  -StorageAccountName $storage `
-                  -ScanResultsContainerName $container `
-                  -RecurringScansInterval Weekly `
-                  -EmailAdmins $false `
-                  -NotificationEmail @($env:NOTIFY_EMAIL) | Out-Null
-
-                $va = Get-AzSqlInstanceVulnerabilityAssessmentSetting `
-                  -ResourceGroupName $rg `
-                  -InstanceName $miName
-
-                if ($va.StorageAccountName -ne $storage -or
-                    $va.ScanResultsContainerName -ne $container -or
-                    "$($va.RecurringScansInterval)" -ne 'Weekly') {
-                  throw "VA settings verification failed for $rg/$miName."
-                }
-
-                $dbs = @(Get-AzSqlInstanceDatabase `
-                  -ResourceGroupName $rg `
-                  -InstanceName $miName |
-                  Where-Object { $_.Name -ne 'master' })
-
-                if ($dbs.Count -eq 0) {
-                  Write-Warning 'No databases found; configuration is verified, but no scan was run.'
-                }
-
-                foreach ($db in $dbs) {
-                  $scanId = 'pipeline-' + [guid]::NewGuid().ToString('N')
-
-                  Start-AzSqlInstanceDatabaseVulnerabilityAssessmentScan `
-                    -ResourceGroupName $rg `
-                    -InstanceName $miName `
-                    -DatabaseName $db.Name `
-                    -ScanId $scanId | Out-Null
-
-                  $record = $null
-                  for ($attempt = 1; $attempt -le 30; $attempt++) {
-                    Start-Sleep -Seconds 20
-
-                    $record = Get-AzSqlInstanceDatabaseVulnerabilityAssessmentScanRecord `
-                      -ResourceGroupName $rg `
-                      -InstanceName $miName `
-                      -DatabaseName $db.Name `
-                      -ScanId $scanId `
-                      -ErrorAction SilentlyContinue
-
-                    if ("$($record.State)" -in @('Passed', 'Failed', 'Fail')) {
-                      break
-                    }
+                # ---------- Safe API helper: GET/PUT only, PUT restricted ----------
+                function Invoke-Arm {
+                  param(
+                    [Parameter(Mandatory)][ValidateSet('GET','PUT')][string]$Method,
+                    [Parameter(Mandatory)][string]$Path,
+                    $Body,
+                    [switch]$AllowNotFound
+                  )
+                  if ($Method -eq 'PUT') {
+                    $okPlan = $Path -match '^/subscriptions/[^/]+/providers/Microsoft\.Security/pricings/SqlServers\?'
+                    $okVa   = $Path -match '^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\.Sql/managedInstances/[^/]+/providers/Microsoft\.Security/sqlVulnerabilityAssessments/default\?'
+                    if (-not ($okPlan -or $okVa)) { throw "BLOCKED: PUT to an unexpected path: $Path" }
                   }
-
-                  if ("$($record.State)" -ne 'Passed') {
-                    throw "Scan not confirmed for $($db.Name). State=$($record.State); scanId=$scanId"
+                  $p = @{ Method = $Method; Uri = "$arm$Path"; Headers = $headers }
+                  if ($Body) { $p.Body = ($Body | ConvertTo-Json -Depth 5); $p.ContentType = 'application/json' }
+                  try { Invoke-RestMethod @p }
+                  catch {
+                    $code = 0
+                    if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
+                    if ($code -eq 404 -and $AllowNotFound) { return $null }
+                    if ($code -eq 401) { throw "401 Unauthorized: token expired or wrong tenant. Generate a new one." }
+                    if ($code -eq 403) { throw "403 Forbidden: missing permission for $Path (see role notes)." }
+                    throw "HTTP $code on $Method $Path`n$($_.ErrorDetails.Message)"
                   }
-
-                  Write-Host "Verified scan for $($db.Name); scanId=$scanId"
                 }
 
-                Write-Host "Defender plan and weekly VA verified for $rg/$miName."
+                # ---------- 1. Confirm the subscription (read only) ----------
+                $subInfo = Invoke-Arm -Method GET -Path "/subscriptions/$($sub)?api-version=2022-12-01"
+                Write-Host "Subscription: $($subInfo.displayName) ($sub)"
+                if ($env:EXPECTED_SUB_NAME -and $subInfo.displayName -ne $env:EXPECTED_SUB_NAME) {
+                  throw "Subscription name mismatch. Expected '$($env:EXPECTED_SUB_NAME)', got '$($subInfo.displayName)'."
+                }
+
+                # ---------- 2. Current state of the 4 Databases switches (read only) ----------
+                $api = 'api-version=2024-01-01'
+                $map = [ordered]@{
+                  'SqlServers'                    = 'Azure SQL Databases'
+                  'SqlServerVirtualMachines'      = 'SQL servers on machines'
+                  'OpenSourceRelationalDatabases' = 'Open-source relational databases'
+                  'CosmosDbs'                     = 'Azure Cosmos DB'
+                }
+                Write-Host "`nCurrent Databases plan switches:"
+                foreach ($k in $map.Keys) {
+                  $t = (Invoke-Arm -Method GET -Path "/subscriptions/$sub/providers/Microsoft.Security/pricings/$($k)?$api").properties.pricingTier
+                  $onOff = if ($t -eq 'Standard') { 'On' } else { 'Off' }
+                  Write-Host ("  {0,-34}{1,-4} ({2})" -f $map[$k], $onOff, $t)
+                }
+
+                # ---------- 3. Azure SQL Databases plan (pricings/SqlServers) ----------
+                if ($env:ENABLE_PLAN -eq 'True') {
+                  $planPath = "/subscriptions/$sub/providers/Microsoft.Security/pricings/SqlServers?$api"
+                  $tier = (Invoke-Arm -Method GET -Path $planPath).properties.pricingTier
+                  if ($tier -eq 'Standard') {
+                    Write-Host "`nAzure SQL Databases: already On (Standard). No change."
+                  } elseif ($dryRun) {
+                    Write-Host "`nDRY RUN: would change Azure SQL Databases from '$tier' to 'Standard' (On)."
+                    Write-Host "Applies to ALL Azure SQL resources in this subscription (list price about `$15/instance/month)."
+                  } else {
+                    Invoke-Arm -Method PUT -Path $planPath -Body @{ properties = @{ pricingTier = 'Standard' } } | Out-Null
+                    $tier = (Invoke-Arm -Method GET -Path $planPath).properties.pricingTier
+                    if ($tier -ne 'Standard') { throw "Azure SQL Databases is not Standard after update (got: $tier)." }
+                    Write-Host "`nAzure SQL Databases: turned ON (Standard)."
+                  }
+                } else {
+                  Write-Host "`nSkipping Azure SQL Databases plan (parameter off)."
+                }
+
+                # ---------- 4. Optional: express vulnerability assessment on the MI ----------
+                if ($env:ENABLE_VA -eq 'True') {
+                  $rg = $env:MI_RG; $miName = $env:MI_NAME
+                  if ($rg -like 'REPLACE_*' -or $miName -like 'REPLACE_*') {
+                    throw "Set resourceGroup and managedInstanceName to enable express VA."
+                  }
+                  $miPath = "/subscriptions/$sub/resourceGroups/$rg/providers/Microsoft.Sql/managedInstances/$miName"
+                  $mi = Invoke-Arm -Method GET -Path "$($miPath)?api-version=2021-11-01"
+                  Write-Host "`nManaged instance found: $($mi.id)"
+
+                  # Express VA needs a system-assigned managed identity on the instance
+                  $idType = if ($mi.identity) { $mi.identity.type } else { 'None' }
+                  if ($idType -notmatch 'SystemAssigned') {
+                    $msg = "Managed instance has no system-assigned identity (found: $idType). Express VA requires it."
+                    if ($dryRun) { Write-Warning $msg } else { throw $msg }
+                  } else { Write-Host "System-assigned identity: present." }
+
+                  $vaPath = "$miPath/providers/Microsoft.Security/sqlVulnerabilityAssessments/default?api-version=2026-04-01-preview"
+                  $va = Invoke-Arm -Method GET -Path $vaPath -AllowNotFound
+                  $state = if ($va) { $va.properties.state } else { 'NotConfigured' }
+
+                  if ($state -eq 'Enabled') {
+                    Write-Host "Express vulnerability assessment: already Enabled. No change."
+                  } elseif ($dryRun) {
+                    Write-Host "DRY RUN: would enable express vulnerability assessment (current: $state)."
+                  } else {
+                    Invoke-Arm -Method PUT -Path $vaPath -Body @{ properties = @{ state = 'Enabled' } } | Out-Null
+                    $state = (Invoke-Arm -Method GET -Path $vaPath).properties.state
+                    if ($state -ne 'Enabled') { throw "Express VA not enabled after update (state: $state)." }
+                    Write-Host "Express vulnerability assessment: Enabled on $rg/$miName."
+                  }
+                }
+
+                if ($dryRun) { Write-Host "`nDRY RUN complete. Re-run with 'Dry run' unchecked to apply." }
+                else { Write-Host "`nDone. Verify in Defender for Cloud > Environment settings > Defender plans > Databases > Select types." }
             env:
+              AZ_TOKEN: $(AZURE_ACCESS_TOKEN)
+              SUB_ID: ${{ parameters.subscriptionId }}
+              EXPECTED_SUB_NAME: ${{ parameters.expectedSubscriptionName }}
+              ENABLE_PLAN: ${{ parameters.enableSqlPlan }}
+              ENABLE_VA: ${{ parameters.enableExpressVA }}
               MI_RG: ${{ parameters.resourceGroup }}
               MI_NAME: ${{ parameters.managedInstanceName }}
-              STORAGE_NAME: ${{ parameters.storageAccountName }}
-              NOTIFY_EMAIL: ${{ parameters.notificationEmail }}
+              DRY_RUN: ${{ parameters.dryRun }}
