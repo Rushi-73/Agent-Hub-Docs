@@ -1,0 +1,116 @@
+REQUEST TO SECURITY TEAM: ENABLE DEFENDER FOR AZURE SQL
+=======================================================
+
+Requester: Rushikesh Ganesh Sonawane (rushikeshganesh_sonawane@epam.com)
+Subscription: ba-ise-at33658-nch-preprod
+Priority: Urgent (release planned tomorrow)
+
+
+1. REQUEST
+----------
+Hi team,
+
+We have a release tomorrow and a vulnerability finding is blocking it: Microsoft Defender for Azure SQL isn't enabled on our pre-prod and prod SQL servers. We don't have a service connection or deploy access for those environments, and a new request would take two to three days.
+
+Could you either enable Defender for SQL on those servers or at the subscription level through Defender for Cloud, or point us to the internal deployment API and onboarding steps so our pipeline can do it today? We're happy to provide the server and subscription names.
+
+This is urgent given tomorrow's release, so any quick help would be appreciated.
+
+Thanks,
+Rushikesh
+
+
+2. SCOPE
+--------
+- Pre-prod subscription: ba-ise-at33658-nch-preprod  (covered by this document)
+- Prod subscription: [PROD subscription name]  (requires a separate request with its own approval)
+
+Enabling the plan at subscription level applies to every Azure SQL resource in that subscription, not only the managed instance in the finding.
+
+
+3. CHANGE REQUESTED
+-------------------
+Turn on the "Azure SQL Databases" Defender plan (Microsoft.Security/pricings/SqlServers).
+
+- Changes: Defender for Cloud plan setting only
+- Database, schema, or data changes: None
+- Cost: List price $15 per instance per month (Azure SQL Databases). Current count: 1 instance. Future Azure SQL resources in the subscription are also billed.
+
+
+4. CURRENT STATE (from portal screenshot)
+-----------------------------------------
+Databases plan row: "Selected: 2/4", 1 instance
+
+- Azure SQL Databases: Off  (requested change)
+- SQL servers on machines: Off  (not needed for managed instances; leave unchanged)
+- Open-source relational databases: On  (leave unchanged)
+- Azure Cosmos DB: On  (leave unchanged)
+
+
+5. PREREQUISITES
+----------------
+- Security Admin, Contributor, or Owner role on the subscription, for the person making the change.
+- No Azure Policy blocking Defender plan changes. If one does, the portal shows the policy name when you select Save.
+
+
+6. PORTAL STEPS (to be performed by Security Team or an approved admin)
+-----------------------------------------------------------------------
+Step 1: Check the current tier (read only, optional)
+  a. In the Azure portal search bar, type "Resource Graph Explorer" and open it.
+  b. Under Subscriptions, select ba-ise-at33658-nch-preprod, then select Apply.
+  c. Run this query:
+
+     securityresources
+     | where type == "microsoft.security/pricings"
+     | project Plan = name, Tier = tostring(properties.pricingTier), Subscription = subscriptionId
+
+  d. Find the row where Plan is "SqlServers".
+     - "Free" = Azure SQL Databases is Off (current state)
+     - "Standard" = Azure SQL Databases is On (no change needed)
+
+Step 2: Open the Defender plans page
+  a. Go to Microsoft Defender for Cloud > Environment settings.
+  b. Select the subscription ba-ise-at33658-nch-preprod.
+  c. Select Defender plans.
+
+Step 3: Turn on Azure SQL Databases
+  a. In the Cloud Workload Protection (CWPP) section, find the Databases row.
+  b. Select "Select types". The Resource types selection panel opens.
+  c. Set "Azure SQL Databases" to On.
+  d. Leave the other three switches unchanged.
+  e. Select Continue.
+  f. Select Save at the top of the Defender plans page.
+     The change is NOT applied until Save is selected.
+
+Step 4: Verify
+  a. Reopen "Select types". Azure SQL Databases shows On, and the Databases row shows "Selected: 3/4".
+  b. Optional: rerun the Resource Graph query from Step 1. The SqlServers row shows "Standard".
+  c. Optional: in the subscription's Activity log, filter for "Update pricing" (Microsoft.Security/pricings/write) and confirm a recent entry.
+
+
+7. ROLLBACK
+-----------
+  a. Repeat Steps 2 and 3.
+  b. Set Azure SQL Databases to Off, select Continue, then select Save.
+  c. The tier returns to Free.
+
+Existing alerts and scan results are kept. Coverage and billing for the plan stop for all Azure SQL resources in the subscription. A Defender setting applied directly on the managed instance is not changed by this rollback.
+
+
+8. ALTERNATIVE (if the team prefers automation)
+-----------------------------------------------
+A PowerShell script (Enable-DefenderSql.ps1) can make the same change through the Azure Resource Manager API. It runs as a dry run by default and changes only the SqlServers plan. It uses the approver's own "az login" identity and needs the same role as above. It is available on request.
+
+
+9. ACCESS NOTE
+--------------
+We do not have a service connection or deploy access for pre-prod or prod. If the Security Team applies the portal change, no pipeline access is needed.
+
+
+10. VERIFICATION EVIDENCE TO RETURN
+-----------------------------------
+- Screenshot of the Resource types selection panel after Save (Azure SQL Databases = On)
+- Output of the Resource Graph query (SqlServers = Standard)
+- Name and time of the person who made the change
+
+
