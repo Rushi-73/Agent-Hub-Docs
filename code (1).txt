@@ -1,0 +1,3 @@
+pe_vnet_name                = "<vnet-name>"
+pe_subnet_name              = "<private-endpoint-subnet-name>"
+pe_vnet_resource_group_name = "<network-resource-group>"

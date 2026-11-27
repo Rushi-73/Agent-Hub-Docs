@@ -1,0 +1,94 @@
+###############################################################################
+# automation-account-webhook-pe.tf
+#
+# Purpose : Fix "Automation Accounts should disable public network access"
+#           - Adds ONE private endpoint (sub-resource: Webhook), with no private DNS
+#           - Public access is disabled in the EXISTING automation account resource
+#
+# BEFORE USING:
+#   1. In your EXISTING azurerm_automation_account resource, add:
+#        public_network_access_enabled = false
+#   2. If your resource label is not "this", change the 2 lines in "locals" below
+#      (e.g. azurerm_automation_account.this -> azurerm_automation_account.aa)
+#   3. Set the 3 variables below in your <env>.tfvars file
+#   4. For the environment ALREADY fixed in the portal, uncomment the import
+#      block at the bottom first
+###############################################################################
+
+# ---------------------------------------------------------------------------
+# Variables (remove any that already exist in your variables.tf)
+# ---------------------------------------------------------------------------
+variable "pe_vnet_name" {
+  description = "Name of the VNet where the private endpoint is created"
+  type        = string
+}
+
+variable "pe_subnet_name" {
+  description = "Name of the subnet where the private endpoint is created"
+  type        = string
+}
+
+variable "pe_vnet_resource_group_name" {
+  description = "Resource group of the VNet"
+  type        = string
+}
+
+# ---------------------------------------------------------------------------
+# Link to the existing Automation Account (CHANGE "this" if your label differs)
+# ---------------------------------------------------------------------------
+locals {
+  aa_name     = azurerm_automation_account.this.name
+  aa_id       = azurerm_automation_account.this.id
+  aa_location = azurerm_automation_account.this.location
+  aa_rg       = azurerm_automation_account.this.resource_group_name
+}
+
+# ---------------------------------------------------------------------------
+# Existing subnet for the private endpoint
+# ---------------------------------------------------------------------------
+data "azurerm_subnet" "aa_pe" {
+  name                 = var.pe_subnet_name
+  virtual_network_name = var.pe_vnet_name
+  resource_group_name  = var.pe_vnet_resource_group_name
+}
+
+# ---------------------------------------------------------------------------
+# Private endpoint (Webhook only, no private DNS zone group)
+# ---------------------------------------------------------------------------
+resource "azurerm_private_endpoint" "aa_webhook" {
+  # Must match the EXACT names in the portal for environments already fixed,
+  # otherwise Terraform will replace the endpoint.
+  name                = "pe-${local.aa_name}-webhook"
+  location            = local.aa_location   # must be the same region as the VNet
+  resource_group_name = local.aa_rg
+  subnet_id           = data.azurerm_subnet.aa_pe.id
+
+  private_service_connection {
+    name                           = "pec-${local.aa_name}-webhook"
+    private_connection_resource_id = local.aa_id
+    subresource_names              = ["Webhook"]
+    is_manual_connection           = false
+  }
+
+  # Ignore DNS zone group if the portal wizard added one automatically
+  lifecycle {
+    ignore_changes = [private_dns_zone_group]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Output (useful for evidence in the ticket)
+# ---------------------------------------------------------------------------
+output "aa_webhook_private_endpoint_ip" {
+  description = "Private IP of the Automation Account Webhook private endpoint"
+  value       = azurerm_private_endpoint.aa_webhook.private_service_connection[0].private_ip_address
+}
+
+# ---------------------------------------------------------------------------
+# IMPORT: ONLY for the environment already fixed in the portal (Terraform 1.5+)
+# Uncomment, fill in the real values, run plan/apply once, then delete it.
+# ---------------------------------------------------------------------------
+# import {
+#   to = azurerm_private_endpoint.aa_webhook
+#   id = "/subscriptions/<SUB-ID>/resourceGroups/<RG>/providers/Microsoft.Network/privateEndpoints/<PE-NAME-FROM-PORTAL>"
+# }
