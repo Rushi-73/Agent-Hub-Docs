@@ -1,0 +1,84 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.35; }
+  h1 { font-size: 16pt; color: #1F3864; border-bottom: 2px solid #1F3864; padding-bottom: 4pt; }
+  h2 { font-size: 12.5pt; color: #1F3864; margin-top: 14pt; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0; }
+  th, td { border: 1px solid #808080; padding: 4pt 6pt; text-align: left; vertical-align: top; }
+  th { background: #D9E2F3; }
+  .placeholder { border: 1px dashed #C00000; color: #C00000; padding: 18pt 8pt; text-align: center; font-style: italic; margin: 8pt 0; }
+  .code { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; background: #F2F2F2; padding: 4pt 6pt; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+
+<h1>Enable Defender for Azure SQL: Steps to Perform and Verify</h1>
+
+<table>
+  <tr><th style="width:25%">Subscription</th><td>ba-ise-at33658-nch-preprod</td></tr>
+  <tr><th>Setting to change</th><td>Defender plan "Azure SQL Databases" (Microsoft.Security/pricings/SqlServers): Off (Free) to On (Standard)</td></tr>
+  <tr><th>Impact</th><td>Applies to all Azure SQL resources in the subscription. Changes only the Defender plan. No database, schema or data changes.</td></tr>
+  <tr><th>Cost</th><td>List price $15 per instance per month. Current count: 1 instance. Future Azure SQL resources in the subscription are also billed.</td></tr>
+  <tr><th>Required role</th><td>Security Admin, Contributor or Owner on the subscription</td></tr>
+</table>
+
+<h2>1. Current State (before change)</h2>
+<p>Databases plan row shows <b>Selected: 2/4</b>, 1 instance.</p>
+<table>
+  <tr><th>Switch</th><th>Current state</th><th>Action</th></tr>
+  <tr><td>Azure SQL Databases</td><td>Off</td><td><b>Turn On</b></td></tr>
+  <tr><td>SQL servers on machines</td><td>Off</td><td>Leave unchanged</td></tr>
+  <tr><td>Open-source relational databases</td><td>On</td><td>Leave unchanged</td></tr>
+  <tr><td>Azure Cosmos DB</td><td>On</td><td>Leave unchanged</td></tr>
+</table>
+<div class="placeholder">[INSERT SCREENSHOT: Defender plans page, Databases row "Selected: 2/4" (before change)]</div>
+<div class="placeholder">[INSERT SCREENSHOT: Resource types selection panel, Azure SQL Databases = Off (before change)]</div>
+
+<h2>2. Steps to Perform</h2>
+<ol>
+  <li>In the Azure portal, go to <b>Microsoft Defender for Cloud</b> &#62; <b>Environment settings</b>.</li>
+  <li>Select the subscription <b>ba-ise-at33658-nch-preprod</b>.</li>
+  <li>Select <b>Defender plans</b>.</li>
+  <li>In the <b>Cloud Workload Protection (CWPP)</b> section, find the <b>Databases</b> row and select <b>Select types</b>.</li>
+  <li>In the Resource types selection panel, set <b>Azure SQL Databases</b> to <b>On</b>. Leave the other three switches unchanged.</li>
+  <li>Select <b>Continue</b>.</li>
+  <li>Select <b>Save</b> at the top of the Defender plans page. <b>The change is not applied until Save is selected.</b></li>
+</ol>
+<div class="placeholder">[INSERT SCREENSHOT: Resource types selection panel with Azure SQL Databases = On, before selecting Continue]</div>
+<div class="placeholder">[INSERT SCREENSHOT: Defender plans page after Save (success notification)]</div>
+
+<h2>3. Steps to Verify</h2>
+<p><b>A. Portal check</b></p>
+<ol>
+  <li>Go to <b>Defender plans</b> and select <b>Select types</b> in the Databases row.</li>
+  <li>Confirm <b>Azure SQL Databases</b> shows <b>On</b>.</li>
+  <li>Confirm the Databases row shows <b>Selected: 3/4</b>.</li>
+</ol>
+<div class="placeholder">[INSERT SCREENSHOT: Resource types selection panel, Azure SQL Databases = On (after change)]</div>
+<div class="placeholder">[INSERT SCREENSHOT: Defender plans page, Databases row "Selected: 3/4" (after change)]</div>
+
+<p><b>B. Tier check with Resource Graph Explorer (optional)</b></p>
+<ol>
+  <li>In the portal search bar, open <b>Resource Graph Explorer</b>.</li>
+  <li>Set the scope to <b>ba-ise-at33658-nch-preprod</b> and select <b>Apply</b>.</li>
+  <li>Run this query:
+    <div class="code">securityresources
+| where type == "microsoft.security/pricings"
+| project Plan = name, Tier = tostring(properties.pricingTier), Subscription = subscriptionId</div>
+  </li>
+  <li>Confirm the row where Plan is <b>SqlServers</b> shows Tier = <b>Standard</b>. (Before the change it shows <b>Free</b>.)</li>
+</ol>
+<div class="placeholder">[INSERT SCREENSHOT: Resource Graph query result, SqlServers = Standard]</div>
+
+<p><b>C. Activity log check (optional)</b></p>
+<ol>
+  <li>Open the subscription and select <b>Activity log</b>.</li>
+  <li>Filter the operation for <b>Update pricing</b> (Microsoft.Security/pricings/write).</li>
+  <li>Confirm there is a recent, successful entry.</li>
+</ol>
+<div class="placeholder">[INSERT SCREENSHOT: Activity log entry for Update pricing]</div>
+
+</body>
+</html>
